@@ -27,7 +27,7 @@ import sys
 
 import gensim
 
-
+import pickle
 
 
 from models import BiLSTM, initialize_parameters
@@ -129,7 +129,7 @@ class Tokenizer:
         return tokenized_list
 
 
-def build_vocab_from_data(raw_train_data, raw_dev_data):
+def build_vocab_from_data(raw_train_data, raw_dev_data, artificial_populate=None):
     """This has been made customly for the given dataset. Need to write your own for any other use case"""
 
     token_freqs = collections.Counter()
@@ -139,6 +139,8 @@ def build_vocab_from_data(raw_train_data, raw_dev_data):
         token_freqs.update(data_point['tokenized_text'])
     #     token_freqs.update(data_point['tokenized_text'] for data_point in raw_train_data)
     #     token_freqs.update(data_point['tokenized_text'] for data_point in raw_dev_data)
+    if artificial_populate:
+        token_freqs.update(artificial_populate)
     vocab = torchtext.vocab.Vocab(token_freqs)
     return vocab
 
@@ -254,7 +256,7 @@ if __name__ == '__main__':
     torch.backends.cudnn.benchmark = False
 
     print("creating tokenizer")
-    tokenizer = Tokenizer(spacy_model="en_core_web_sm", clean_text=clean_text, max_length=-1)
+    tokenizer = Tokenizer(spacy_model="en_core_web_sm", clean_text=clean_text, max_length=None)
 
 
     # read the csv files and do a process over it
@@ -265,15 +267,41 @@ if __name__ == '__main__':
 
     print("reading and tokenizing data. This is going to take long time: 10 mins ")
     # Optimize this later. We don't need pandas dataframe
-    debias_train_raw = transform_dataframe_to_dict(data_frame=pd.read_csv(debias_train), tokenizer=tokenizer)
-    debias_dev_raw = transform_dataframe_to_dict(data_frame=pd.read_csv(debias_dev), tokenizer=tokenizer)
-    debias_test_raw = transform_dataframe_to_dict(data_frame=pd.read_csv(debias_test), tokenizer=tokenizer)
+
+
+    file = Path("../data/wiki_debias_train.pkl")
+
+    if file.exists():
+        debias_train_raw = pickle.load(open('../data/wiki_debias_train.pkl', 'rb'))
+        debias_dev_raw = pickle.load(open('../data/wiki_debias_dev.pkl', 'rb'))
+        debias_test_raw = pickle.load(open('../data/wiki_debias_test.pkl', 'rb'))
+    else:
+        debias_train = Path('../data/wiki_debias_train.csv')
+        debias_dev = Path('../data/wiki_debias_dev.csv')
+        debias_test = Path('../data/wiki_debias_test.csv')
+
+        # Optimize this later. We don't need pandas dataframe
+        debias_train_raw = transform_dataframe_to_dict(data_frame=pd.read_csv(debias_train), tokenizer=tokenizer)
+        debias_dev_raw = transform_dataframe_to_dict(data_frame=pd.read_csv(debias_dev), tokenizer=tokenizer)
+        debias_test_raw = transform_dataframe_to_dict(data_frame=pd.read_csv(debias_test), tokenizer=tokenizer)
+
+        import pickle
+
+        pickle.dump(debias_train_raw, open('../data/wiki_debias_train.pkl', 'wb'))
+        pickle.dump(debias_dev_raw, open('../data/wiki_debias_dev.pkl', 'wb'))
+        pickle.dump(debias_test_raw, open('../data/wiki_debias_test.pkl', 'wb'))
+
+
+
     print("done tokenizing")
 
 
 
     # vocab object of torch text. Has inbuilt functionalities like stoi
     vocab = build_vocab_from_data(raw_train_data=debias_train_raw, raw_dev_data=debias_dev_raw)
+
+    pickle.dump(vocab, open(params['model_save_name']+'vocab.pkl', 'wb'))
+    print("done pickling vocab")
 
     # prepare training data and define transformation function
     train_data = process_data(raw_data=debias_train_raw, vocab=vocab)
@@ -313,8 +341,8 @@ if __name__ == '__main__':
         model = BiLSTM(input_dim, emb_dim, hid_dim, output_dim, n_layers, dropout, pad_idx)
         model.apply(initialize_parameters)
 
-    optimizer = optim.Adam(model.parameters())
-    criterion = nn.CrossEntropyLoss()
+        optimizer = optim.Adam(model.parameters())
+        criterion = nn.CrossEntropyLoss()
     device = torch.device(params['device'])
 
 
@@ -337,7 +365,7 @@ if __name__ == '__main__':
     model = model.to(device)
     model.embedding.weight.data.copy_(pretrained_embedding)
 
-    n_epochs = 10
+    n_epochs = 20
 
     best_valid_loss = float('inf')
 
@@ -354,7 +382,7 @@ if __name__ == '__main__':
 
         if valid_loss < best_valid_loss:
             best_valid_loss = valid_loss
-            torch.save(model.state_dict(), 'bilstm-model.pt')
+            torch.save(model.state_dict(), params['model_save_name'])
 
         print(f'Epoch: {epoch + 1:02} | Epoch Time: {epoch_mins}m {epoch_secs}s')
         print(f'\tTrain Loss: {train_loss:.3f} | Train Acc: {train_acc * 100:.2f}%')
