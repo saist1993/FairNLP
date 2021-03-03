@@ -21,7 +21,53 @@ from torchtext.experimental.functional import sequential_transforms, vocab_func,
 from models import *
 import static_db
 from main import clean_text, Tokenizer, build_vocab_from_data, get_pretrained_embedding, epoch_time
+from utils import parse_args
 
+import random
+import sys
+
+import pickle
+
+from nltk.tokenize import TweetTokenizer
+
+
+def custom_clean_text(text):
+    return text.replace('#', '').replace('@', '')
+
+class CustomTweetTokenizer:
+    """Cleans the data and tokenizes it"""
+
+    def __init__(self, spacy_model: str = "en_core_web_sm", clean_text=clean_text, max_length=None):
+        self.tokenizer_model = TweetTokenizer()
+        self.clean_text = clean_text
+        self.max_length = max_length
+
+    def tokenize(self, s):
+
+        tokens = self.tokenizer_model.tokenize(s)
+        final_token = []
+        if self.clean_text:
+            for t in tokens:
+                clean_t = clean_text(t)
+                if clean_t:
+                    final_token.append(clean_t)
+
+            tokens = final_token
+        # tokens = [token.text for token in doc]
+
+        if self.max_length:
+            tokens = tokens[:self.max_length]
+
+        return tokens
+
+    def batch_tokenize(self, texts: list):
+        """tokenizes a list via nlp pipeline space"""
+        # nlp = self.tokenizer_model
+
+        tokenized_list = []
+        for t in texts:
+            tokenized_list.append(self.tokenize(t))
+        return tokenized_list
 DEFAULT_PARAMS = {
     "spacy_model": "en_core_web_sm",
     "seed": 1234,
@@ -38,7 +84,7 @@ DEFAULT_PARAMS = {
 }
 
 BILSTM_PARAMS = {
-    "emb_dim": 300,
+    "emb_dim": 200,
     "hid_dim": 256,
     "output_dim": 2,
     "n_layers": 2,
@@ -122,8 +168,7 @@ class Collator:
         return labels, text, lengths
 
 def calculate_accuracy(predictions, labels):
-    return scipy.stats.pearsonr(predictions.squeeze().detach().numpy(), labels.detach().numpy())[0]
-
+    return scipy.stats.pearsonr(predictions.squeeze().detach().cpu().numpy(), labels.cpu().detach().cpu().numpy())[0]
 
 def train_loop(model, iterator, optimizer, criterion, device):
     epoch_loss = 0
@@ -139,7 +184,7 @@ def train_loop(model, iterator, optimizer, criterion, device):
 
         predictions = model(text, lengths)
 
-        loss = criterion(predictions, labels)
+        loss = criterion(predictions.squeeze(), labels.squeeze())
 
         acc = calculate_accuracy(predictions, labels)
 
@@ -166,7 +211,7 @@ def evaluate_loop(model, iterator, criterion, device):
 
             predictions = model(text, lengths)
 
-            loss = criterion(predictions, labels)
+            loss = criterion(predictions.squeeze(), labels.squeeze())
 
             acc = calculate_accuracy(predictions, labels)
 
@@ -178,6 +223,27 @@ def evaluate_loop(model, iterator, criterion, device):
 
 
 if __name__ == '__main__':
+
+    parsed_args = parse_args(sys.argv[1:])
+    params = DEFAULT_PARAMS.copy()
+    bilstm_params = BILSTM_PARAMS.copy()
+
+    for k,v in parsed_args.items():
+        if k.lower() in params.keys():
+            params[k.lower()] = v
+        elif k.lower() in bilstm_params:
+            bilstm_params[k.lower()] = v
+
+    # defaults to LSTM too
+    if params['model'] == 'bilstm':
+        model_params = bilstm_params
+
+    seed = params['seed']
+
+    torch.manual_seed(seed)
+    random.seed(seed)
+    torch.backends.cudnn.deterministic = True
+    torch.backends.cudnn.benchmark = False
 
     train = []
     for emotion in emotions:
@@ -198,7 +264,7 @@ if __name__ == '__main__':
     print(
         f"After cleanup: length of train is {len(train)}, length of dev is {len(dev)}, and length of test is {len(test)}")
 
-    tokenizer = Tokenizer(spacy_model="en_core_web_sm", clean_text=clean_text, max_length=None)
+    tokenizer = CustomTweetTokenizer(spacy_model="en_core_web_sm", clean_text=custom_clean_text, max_length=None)
 
     dev_processed = transform_dataframe_to_dict(data=dev, tokenizer=tokenizer)
     train_processed = transform_dataframe_to_dict(data=train, tokenizer=tokenizer)
@@ -230,7 +296,7 @@ if __name__ == '__main__':
     collator = Collator(pad_idx)
 
     batch_size = params['batch_size']
-
+    pickle.dump(vocab, open(params['model_save_name'] + 'vocab.pkl', 'wb'))
     print("creating training data iterators")
     train_iterator = torch.utils.data.DataLoader(train_data,
                                                  batch_size,
@@ -260,7 +326,7 @@ if __name__ == '__main__':
         model = BiLSTM(input_dim, emb_dim, hid_dim, output_dim, n_layers, dropout, pad_idx)
         model.apply(initialize_parameters)
 
-        optimizer = optim.Adam(model.parameters())
+
         criterion = nn.MSELoss()
 
     device = torch.device(params['device'])
@@ -282,7 +348,11 @@ if __name__ == '__main__':
     model = model.to(device)
     model.embedding.weight.data.copy_(pretrained_embedding)
 
-    n_epochs = 20
+    model.embedding.weight.requires_grad = False
+
+    optimizer = optim.Adam(model.parameters([param for param in model.parameters() if param.requires_grad == True]))
+
+    n_epochs = 200
 
     best_valid_loss = float('inf')
 
@@ -292,6 +362,7 @@ if __name__ == '__main__':
 
         train_loss, train_acc = train_loop(model, train_iterator, optimizer, criterion, device)
         valid_loss, valid_acc = evaluate_loop(model, dev_iterator, criterion, device)
+        test_loss, test_acc = evaluate_loop(model, test_iterator, criterion, device)
 
         end_time = time.monotonic()
 
@@ -302,5 +373,6 @@ if __name__ == '__main__':
             torch.save(model.state_dict(), params['model_save_name'])
 
         print(f'Epoch: {epoch + 1:02} | Epoch Time: {epoch_mins}m {epoch_secs}s')
-        print(f'\tTrain Loss: {train_loss:.3f} | Train Acc: {train_acc * 100:.2f}%')
-        print(f'\t Val. Loss: {valid_loss:.3f} |  Val. Acc: {valid_acc * 100:.2f}%')
+        print(f'\tTrain Loss: {train_loss:.3f} | Train Acc: {train_acc:.2f}%')
+        print(f'\t Val. Loss: {valid_loss:.3f} |  Val. Acc: {valid_acc:.2f}%')
+        print(f'\t Test Loss: {test_loss:.3f} |  Test Acc: {test_acc:.2f}%')
