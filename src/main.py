@@ -62,6 +62,8 @@ def generate_data_iterator(dataset_name:str, **kwargs):
         dataset_creator = create_data.ValencePrediction(dataset_name=dataset_name,**kwargs)
         vocab, number_of_labels, train_iterator, dev_iterator, test_iterator = dataset_creator.run()
         return vocab, number_of_labels, train_iterator, dev_iterator, test_iterator
+    else:
+        raise CustomError("No such dataset")
 
 def get_pretrained_embedding(initial_embedding, pretrained_vectors, vocab, device):
     pretrained_embedding = torch.FloatTensor(initial_embedding.weight.clone()).cpu().detach().numpy()

@@ -38,6 +38,7 @@ class WikiSimpleClassification:
         reads the actual data from the disk
         @ still need to make it more general, specifcally path needs to be read from some external file.
         """
+        print(tokenizer)
         final_data = []
         for i in data_frame.iterrows():
             temp = {
@@ -270,9 +271,9 @@ class ValencePrediction(WikiSimpleClassification):
                                                     shuffle=False,
                                                     collate_fn=self.collate)
 
-        number_of_labels = len(list(set(train_data.get_labels())))
+        # number_of_labels = len(list(set(train_data.get_labels())))
 
-        if number_of_labels > 100:
-            number_of_labels = 1 # if there are too many labels, most probably it is a regression task and not classifiation
+        # if number_of_labels > 100:
+        #     number_of_labels = 1 # if there are too many labels, most probably it is a regression task and not classifiation
 
         return vocab, number_of_labels, train_iterator, dev_iterator, test_iterator
