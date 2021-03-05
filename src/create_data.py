@@ -645,4 +645,3 @@ class SimpleAdvDatasetReader():
 
         return vocab, number_of_labels, train_iterator, dev_iterator, test_iterator, len(np.unique(self.s))
 
-
