@@ -197,10 +197,11 @@ def main(emb_dim:int,
     accuracy_calculation_function = calculate_accuracy_regression if number_of_labels == 1 else calculate_accuracy_classification
 
     best_test_acc, best_valid_acc, test_acc_at_best_valid_acc = basic_training_loop(
-        n_epochs=epochs,
+         n_epochs=epochs,
          model=model,
          train_iterator=train_iterator,
          dev_iterator=dev_iterator,
+         test_iterator=test_iterator,
          optimizer=optimizer,
          criterion=criterion,
          device=device,

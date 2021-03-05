@@ -63,6 +63,7 @@ def basic_training_loop(
         model,
         train_iterator,
         dev_iterator,
+        test_iterator,
         optimizer,
         criterion,
         device,
@@ -82,7 +83,7 @@ def basic_training_loop(
 
         train_loss, train_acc = train(model, train_iterator, optimizer, criterion, device, accuracy_calculation_function)
         valid_loss, valid_acc = evaluate(model, dev_iterator, criterion, device, accuracy_calculation_function)
-        test_loss, test_acc = evaluate(model, dev_iterator, criterion, device, accuracy_calculation_function)
+        test_loss, test_acc = evaluate(model, test_iterator, criterion, device, accuracy_calculation_function)
 
         end_time = time.monotonic()
 
