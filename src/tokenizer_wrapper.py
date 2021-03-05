@@ -42,7 +42,7 @@ class SpacyTokenizer:
         return tokenized_list
 
 
-class TweetTokenizer:
+class TwitterTokenizer:
     """Cleans the data and tokenizes it"""
 
     def __init__(self, clean_text=clean_text, max_length=None):

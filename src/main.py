@@ -46,7 +46,7 @@ def init_tokenizer(tokenizer:str,
     if tokenizer.lower() == 'spacy':
         return tokenizer_wrapper.SpacyTokenizer(spacy_model="en_core_web_sm", clean_text=clean_text, max_length=max_length)
     elif tokenizer.lower() == 'tweet':
-        return tokenizer_wrapper.TweetTokenizer(clean_text=clean_text, max_length=max_length)
+        return tokenizer_wrapper.TwitterTokenizer(clean_text=clean_text, max_length=max_length)
     else:
         raise CustomError("Tokenizer not found")
 
