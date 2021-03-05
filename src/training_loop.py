@@ -70,10 +70,10 @@ def basic_training_loop(
         model_save_name,
         accuracy_calculation_function
 ):
-    best_valid_loss = float('inf')
-    best_valid_acc = float('inf')
-    best_test_acc = float('inf')
-    test_acc_at_best_valid_acc = float('inf')
+    best_valid_loss = -1*float('inf')
+    best_valid_acc = -1*float('inf')
+    best_test_acc = -1*float('inf')
+    test_acc_at_best_valid_acc = -1*float('inf')
     best_valid_acc_epoch = 0
 
 
@@ -101,8 +101,8 @@ def basic_training_loop(
             best_test_acc = test_acc
 
         print(f'Epoch: {epoch + 1:02} | Epoch Time: {epoch_mins}m {epoch_secs}s')
-        print(f'\tTrain Loss: {train_loss:.3f} | Train Acc: {train_acc * 100:.2f}%')
-        print(f'\t Val. Loss: {valid_loss:.3f} |  Val. Acc: {valid_acc * 100:.2f}%')
-        print(f'\t Val. Loss: {test_loss:.3f} |  Val. Acc: {test_acc * 100:.2f}%')
+        print(f'\tTrain Loss: {train_loss:.3f} | Train Acc: {train_acc}%')
+        print(f'\t Val. Loss: {valid_loss:.3f} |  Val. Acc: {valid_acc}%')
+        print(f'\t Val. Loss: {test_loss:.3f} |  Val. Acc: {test_acc}%')
 
     return best_test_acc, best_valid_acc, test_acc_at_best_valid_acc
