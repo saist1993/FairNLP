@@ -11,7 +11,7 @@ from string import Template
 from typing import List, Callable
 
 
-from utils import totensor, sequential_transforms, vocab_func, TextClassificationDataset
+from utils import totensor, sequential_transforms, vocab_func, TextClassificationDataset, clean_text_tweet
 
 class WikiSimpleClassification:
 
@@ -185,7 +185,7 @@ class ValencePrediction(WikiSimpleClassification):
         final_data = []
         for i in data:
             temp = {
-                'text': i[1],
+                'text': clean_text_tweet(i[1]),
                 'emotion': i[2],
                 'lable': float(i[-1]),
             }
