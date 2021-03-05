@@ -53,7 +53,7 @@ def evaluate(model, iterator, criterion, device, accuracy_calculation_function):
             acc = accuracy_calculation_function(predictions, labels)
 
             epoch_loss += loss.item()
-            epoch_acc += acc.item()
+            epoch_acc += acc
 
     return epoch_loss / len(iterator), epoch_acc / len(iterator)
 
