@@ -2,8 +2,16 @@ import torch
 import torch.nn as nn
 
 class BiLSTM(nn.Module):
-    def __init__(self, input_dim, emb_dim, hid_dim, output_dim, n_layers, dropout, pad_idx):
+    def __init__(self, model_params):
         super().__init__()
+
+        input_dim = model_params['input_dim']
+        emb_dim = model_params['emb_dim']
+        hid_dim = model_params['hidden_dim']
+        output_dim = model_params['output_dim']
+        n_layers = model_params['n_layers']
+        dropout = model_params['dropout']
+        pad_idx = model_params['pad_idx']
 
         self.embedding = nn.Embedding(input_dim, emb_dim, padding_idx=pad_idx)
         self.lstm = nn.LSTM(emb_dim, hid_dim, num_layers=n_layers, bidirectional=True, dropout=dropout)

@@ -1,423 +1,216 @@
-import torch
-import torch.nn as nn
+# This file will replicate main.py but without torch.text experimental functionality.
+# Secondary objective is to be as abstract and organized as possible
 
+# Torch related imports
+import torch
+import torchtext
+import torch.nn as nn
 import torch.optim as optim
 
-import torchtext
-import torchtext.experimental
-import torchtext.experimental.vectors
-from torchtext.experimental.datasets.raw.text_classification import RawTextIterableDataset
-from torchtext.experimental.datasets.text_classification import TextClassificationDataset
-from torchtext.experimental.functional import sequential_transforms, vocab_func, totensor
 
-import collections
+import click
+import scipy
 import random
-import time
-
-import pandas as pd
-
-from pathlib import Path
-
-import spacy
-import re
-
-from functools import partial
-from tqdm import tqdm
-import sys
-
 import gensim
-
 import pickle
+from pathlib import Path
+from tqdm.auto import tqdm
+from typing import Optional, Callable, List
 
 
-import static_db
-
-
+# custom imports
+import create_data
+import tokenizer_wrapper
+from config import BILSTM_PARAMS
+from utils import resolve_device, CustomError
+from training_loop import basic_training_loop
 from models import BiLSTM, initialize_parameters
+from utils import clean_text as clean_text_function
 
 
-from utils  import parse_args, get_pretrained_embedding
-
-DEFAULT_PARAMS = {
-    "spacy_model": "en_core_web_sm",
-    "seed": 1234,
-    "train_path": "../data/wiki_debias_train.csv",
-    "dev_path": "../data/wiki_debias_dev.csv",
-    "test_path": "../data/wiki_debias_test.csv",
-    "batch_size" : 512,
-    "pad_token": '<pad>',
-    "unk_token": "<unk>",
-    "device": "cpu",
-    "pre_trained_word_vec": "../data/testvec1",
-    "model_save_name": "bilstm.pt",
-    "model": "bilstm",
-}
-
-BILSTM_PARAMS = {
-    "emb_dim": 200,
-    "hid_dim": 256,
-    "output_dim": 2,
-    "n_layers": 2,
-    "dropout": 0.5
-}
-
-
-def transform_dataframe_to_dict(data_frame, tokenizer):
-    final_data = []
-    for i in data_frame.iterrows():
-        if len(clean_text(i[1]['comment'])) >= 5:
-            temp = {
-                'original_text': i[1]['comment'],
-                'lable': i[1]['is_toxic'],
-                'toxicity': i[1]['toxicity'],
-                'text': clean_text(i[1]['comment'])
-            }
-            final_data.append(temp)
-    texts = [f['text'] for f in final_data]
-    tokenized_text = tokenizer.batch_tokenize(texts=texts)
-    new_final_data = []
-    for index, f in enumerate(final_data):
-        f['tokenized_text'] = tokenized_text[index]
-        if len(tokenized_text[index]) > 1:
-            new_final_data.append(f)
-
-    # sanity check
-    for f in new_final_data:
-        assert len(f['tokenized_text']) > 1
-
-    return new_final_data
-
-
-def clean_text(text: str):
-    """
-    cleans text casing puntations and special characters. Removes extra space
-    """
-    text = re.sub('[^ a-zA-Z0-9]|unk', '', text)
-    text = text.strip()
-    return text
-
-
-class Tokenizer:
-    """Cleans the data and tokenizes it"""
-
-    def __init__(self, spacy_model: str = "en_core_web_sm", clean_text=clean_text, max_length=None):
-        self.tokenizer_model = spacy.load(spacy_model)
-        self.clean_text = clean_text
-        self.max_length = max_length
-
-    def tokenize(self, s):
-        if self.clean_text:
-            s = clean_text(s)
-        doc = self.tokenizer_model(s)
-        tokens = [token.text for token in doc]
-
-        if self.max_length:
-            tokens = tokens[:self.max_length]
-
-        return tokens
-
-    def batch_tokenize(self, texts: list, ):
-        """tokenizes a list via nlp pipeline space"""
-        nlp = self.tokenizer_model
-
-        tokenized_list = []
-
-        if self.max_length:
-            for doc in tqdm(nlp.pipe(texts, disable=["ner", "tok2vec"])):
-                tokenized_list.append([t.text for t in doc][:self.max_length])
-        else:
-            for doc in tqdm(nlp.pipe(texts, disable=["ner", "tok2vec"])):
-                tokenized_list.append([t.text for t in doc])
-
-        return tokenized_list
-
-
-def build_vocab_from_data(raw_train_data, raw_dev_data, artificial_populate=None):
-    """This has been made customly for the given dataset. Need to write your own for any other use case"""
-
-    token_freqs = collections.Counter()
-    for data_point in raw_train_data:
-        token_freqs.update(data_point['tokenized_text'])
-    for data_point in raw_dev_data:
-        token_freqs.update(data_point['tokenized_text'])
-    #     token_freqs.update(data_point['tokenized_text'] for data_point in raw_train_data)
-    #     token_freqs.update(data_point['tokenized_text'] for data_point in raw_dev_data)
-    if artificial_populate:
-        token_freqs.update(artificial_populate)
-    vocab = torchtext.vocab.Vocab(token_freqs)
-    return vocab
-
-
-def process_data(raw_data, vocab):
-    """raw data is assumed to be tokenized"""
-    final_data = [(data_point['lable'], data_point['tokenized_text']) for data_point in raw_data]
-    text_transformation = sequential_transforms(vocab_func(vocab),
-                                                totensor(dtype=torch.long))
-    label_transform = sequential_transforms(totensor(dtype=torch.long))
-
-    transforms = (label_transform, text_transformation)
-
-    return TextClassificationDataset(final_data, vocab, transforms)
-
-
-class Collator:
-    def __init__(self, pad_idx):
-        self.pad_idx = pad_idx
-
-    def collate(self, batch):
-        labels, text = zip(*batch)
-        labels = torch.LongTensor(labels)
-        lengths = torch.LongTensor([len(x) for x in text])
-        text = nn.utils.rnn.pad_sequence(text, padding_value=self.pad_idx)
-
-        return labels, text, lengths
-
-def calculate_accuracy(predictions, labels):
+def calculate_accuracy_classification(predictions, labels):
     top_predictions = predictions.argmax(1, keepdim = True)
     correct = top_predictions.eq(labels.view_as(top_predictions)).sum()
     accuracy = correct.float() / labels.shape[0]
     return accuracy
 
-
-def train(model, iterator, optimizer, criterion, device):
-    epoch_loss = 0
-    epoch_acc = 0
-
-    model.train()
-
-    for labels, text, lengths in tqdm(iterator):
-        labels = labels.to(device)
-        text = text.to(device)
-
-        optimizer.zero_grad()
-
-        predictions = model(text, lengths)
-
-        loss = criterion(predictions, labels)
-
-        acc = calculate_accuracy(predictions, labels)
-
-        loss.backward()
-
-        optimizer.step()
-
-        epoch_loss += loss.item()
-        epoch_acc += acc.item()
-
-    return epoch_loss / len(iterator), epoch_acc / len(iterator)
+def calculate_accuracy_regression(predictions, labels):
+    return scipy.stats.pearsonr(predictions.squeeze().detach().cpu().numpy(), labels.cpu().detach().cpu().numpy())[0]
 
 
-def evaluate(model, iterator, criterion, device):
-    epoch_loss = 0
-    epoch_acc = 0
 
-    model.eval()
+def init_tokenizer(tokenizer:str,
+                   clean_text:Optional[Callable],
+                   max_length:Optional[int]):
 
-    with torch.no_grad():
-        for labels, text, lengths in iterator:
-            labels = labels.to(device)
-            text = text.to(device)
+    if tokenizer.lower() == 'spacy':
+        return tokenizer_wrapper.SpacyTokenizer(spacy_model="en_core_web_sm", clean_text=clean_text, max_length=max_length)
+    elif tokenizer.lower() == 'tweet':
+        return tokenizer_wrapper.TweetTokenizer(clean_text=clean_text, max_length=max_length)
+    else:
+        raise CustomError("Tokenizer not found")
 
-            predictions = model(text, lengths)
+def generate_data_iterator(dataset_name:str, **kwargs):
 
-            loss = criterion(predictions, labels)
+    if dataset_name[:4].lower() == 'wiki':
+        dataset_creator = create_data.WikiSimpleClassification(dataset_name=dataset_name,**kwargs)
+        vocab, number_of_labels, train_iterator, dev_iterator, test_iterator = dataset_creator.run()
+        return vocab, number_of_labels, train_iterator, dev_iterator, test_iterator
 
-            acc = calculate_accuracy(predictions, labels)
+    elif dataset_name[:4].lower() == 'valence':
+        dataset_creator = create_data.ValencePrediction(dataset_name=dataset_name,**kwargs)
+        vocab, number_of_labels, train_iterator, dev_iterator, test_iterator = dataset_creator.run()
+        return vocab, number_of_labels, train_iterator, dev_iterator, test_iterator
 
-            epoch_loss += loss.item()
-            epoch_acc += acc.item()
+def get_pretrained_embedding(initial_embedding, pretrained_vectors, vocab, device):
+    pretrained_embedding = torch.FloatTensor(initial_embedding.weight.clone()).cpu().detach().numpy()
 
-    return epoch_loss / len(iterator), epoch_acc / len(iterator)
+    # if device == 'cpu':
+    #     pretrained_embedding = torch.FloatTensor(initial_embedding.weight.clone()).cpu().detach().numpy()
+    # else:
+    #     pretrained_embedding = torch.FloatTensor(initial_embedding.weight.clone()).cuda().detach().numpy()
 
-def epoch_time(start_time, end_time):
-    elapsed_time = end_time - start_time
-    elapsed_mins = int(elapsed_time / 60)
-    elapsed_secs = int(elapsed_time - (elapsed_mins * 60))
-    return elapsed_mins, elapsed_secs
+    unk_tokens = []
+
+    for idx, token in tqdm(enumerate(vocab.itos)):
+        try:
+            pretrained_embedding[idx] = pretrained_vectors[token]
+        except KeyError:
+            unk_tokens.append(token)
+
+    pretrained_embedding = torch.from_numpy(pretrained_embedding).to(device)
+    return pretrained_embedding, unk_tokens
 
 
-if __name__ == '__main__':
-    parsed_args = parse_args(sys.argv[1:])
-    params = DEFAULT_PARAMS.copy()
-    bilstm_params = BILSTM_PARAMS.copy()
+@click.command()
+@click.option('-embedding', '--emb_dim', type=int, default=300)
+@click.option('-spacy', '--spacy_model', type=str, default="en_core_web_sm", help="the spacy model used for tokenization. This might not be suitable for twitter and other noisy use cases ")
+@click.option('-seed', '--seed', type=int, default=1234)
+@click.option('-data', '--dataset_name', type=str, default='wiki_debias', help='the first half (wiki) is the name of the dataset, and the second half (debias) is the specific kind to use')
+@click.option('-bs', '--batch_size', type=int, default=512)
+@click.option('-pad', '--pad_token', type=str, default='<pad>')
+@click.option('-unk', '--unk_token', type=str, default='<unk>')
+@click.option('-embeddings', '--pre_trained_embeddings', type=str, default='../../bias-in-nlp/different_embeddings/simple_glove_vectors.vec') # work on this.
+@click.option('-save_model_as', '--model_save_name', type=str, default='bilstm.pt')
+@click.option('-model', '--model', type=str, default='bilstm')
+@click.option('-is_regression', '--regression', type=bool, default=True, help='if regression then sentiment/toxicity is a continous value else classification.')
+@click.option('-tokenizer', '--tokenizer_type', type=str, default="spacy", help='currently available: tweet, spacy')
+@click.option('-clean_text', '--use_clean_text', type=bool, default=False)
+@click.option('-max_len', '--max_length', type=int, default=None)
+@click.option('-epochs', '--epochs', type=int, default=30)
+@click.option('-learnable_embeddings', '--learnable_embeddings', type=bool, default=False)
 
-    for k,v in parsed_args.items():
-        if k.lower() in params.keys():
-            params[k.lower()] = v
-        elif k.lower() in bilstm_params:
-            bilstm_params[k.lower()] = v
+def main(emb_dim:int,
+         spacy_model:str,
+         seed:int,
+         dataset_name:str,
+         batch_size:int,
+         pad_token:str,
+         unk_token:str,
+         pre_trained_embeddings:str,
+         model_save_name:str,
+         model:str,
+         regression:bool,
+         tokenizer_type:str,
+         use_clean_text:bool,
+         max_length:Optional[int],
+         epochs:int,
+         learnable_embeddings:bool):
 
-    # defaults to LSTM too
-    if params['model'] == 'bilstm':
-        model_params = bilstm_params
-
-    seed = params['seed']
-
+    print(f"seed is {seed}")
     torch.manual_seed(seed)
     random.seed(seed)
     torch.backends.cudnn.deterministic = True
     torch.backends.cudnn.benchmark = False
+    device = resolve_device() # if cuda: then cuda else cpu
 
-    print("creating tokenizer")
-    tokenizer = Tokenizer(spacy_model="en_core_web_sm", clean_text=clean_text, max_length=None)
+    # set clean text and max length
+    clean_text = clean_text_function if use_clean_text else None
+    max_length = max_length if max_length else None
 
+    print(f"initializing tokenizer: {tokenizer_type}")
+    tokenizer = init_tokenizer(
+        tokenizer= tokenizer_type,
+        clean_text=clean_text,
+        max_length=max_length
+    )
 
-    # read the csv files and do a process over it
+    iterator_params = {
+        'tokenizer': tokenizer,
+        'artificial_populate': [],
+        'pad_token': pad_token,
+        'batch_size': batch_size,
+        'is_regression': regression
+    }
+    vocab, number_of_labels, train_iterator, dev_iterator, test_iterator = \
+        generate_data_iterator(dataset_name=dataset_name, **iterator_params)
 
-    debias_train = Path('../data/wiki_debias_train.csv')
-    debias_dev = Path('../data/wiki_debias_dev.csv')
-    debias_test = Path('../data/wiki_debias_test.csv')
+    # need to pickle vocab. Same name as model save name but with additional "_vocab.pkl"
+    pickle.dump(vocab, open(model_save_name + '_vocab.pkl', 'wb'))
+    # load pre-trained embeddings
+    print(f"reading pre-trained vector file from: {pre_trained_embeddings}")
+    pretrained_embedding = gensim.models.KeyedVectors.load_word2vec_format(pre_trained_embeddings)
 
-    print("reading and tokenizing data. This is going to take long time: 10 mins ")
-    # Optimize this later. We don't need pandas dataframe
+    # infer input dim based on the pretrained_embeddings
+    emb_dim = pretrained_embedding.vectors.shape[1]
+    output_dim = number_of_labels
+    input_dim = len(vocab)
 
+    if model == 'bilstm':
+        model_params = {
+            'input_dim': input_dim,
+            'emb_dim': emb_dim,
+            'hidden_dim': BILSTM_PARAMS['hidden_dim'],
+            'output_dim': output_dim,
+            'n_layers': BILSTM_PARAMS['n_layers'],
+            'dropout': BILSTM_PARAMS['dropout'],
+            'pad_idx': vocab['pad_token']
 
-    file = Path("../data/wiki_debias_train.pkl")
-
-    if file.exists():
-        debias_train_raw = pickle.load(open('../data/wiki_debias_train.pkl', 'rb'))
-        debias_dev_raw = pickle.load(open('../data/wiki_debias_dev.pkl', 'rb'))
-        debias_test_raw = pickle.load(open('../data/wiki_debias_test.pkl', 'rb'))
-    else:
-        debias_train = Path('../data/wiki_debias_train.csv')
-        debias_dev = Path('../data/wiki_debias_dev.csv')
-        debias_test = Path('../data/wiki_debias_test.csv')
-
-        # Optimize this later. We don't need pandas dataframe
-        debias_train_raw = transform_dataframe_to_dict(data_frame=pd.read_csv(debias_train), tokenizer=tokenizer)
-        debias_dev_raw = transform_dataframe_to_dict(data_frame=pd.read_csv(debias_dev), tokenizer=tokenizer)
-        debias_test_raw = transform_dataframe_to_dict(data_frame=pd.read_csv(debias_test), tokenizer=tokenizer)
-
-        import pickle
-
-        pickle.dump(debias_train_raw, open('../data/wiki_debias_train.pkl', 'wb'))
-        pickle.dump(debias_dev_raw, open('../data/wiki_debias_dev.pkl', 'wb'))
-        pickle.dump(debias_test_raw, open('../data/wiki_debias_test.pkl', 'wb'))
-
-
-
-    print("done tokenizing")
-
-
-
-    # vocab object of torch text. Has inbuilt functionalities like stoi
-    temp_vocab = build_vocab_from_data(raw_train_data=debias_train_raw, raw_dev_data=debias_dev_raw)
-
-    groups = ['male_names', 'female_names',
-              'african_american_names', 'european_american_names',
-              'african_american_male_names', 'african_american_female_names',
-              'european_american_male_names', 'european_american_female_names']
-    combined_names = list(set([j for i in groups for j in static_db.database[i]]))
-
-    names_to_add = []
-    for c in combined_names:
-        if temp_vocab.stoi[c] == 0:
-            names_to_add.append(c)
-
-    names_to_add.append('caucasian')
-
-    vocab = build_vocab_from_data(raw_train_data=debias_train_raw, raw_dev_data=debias_dev_raw,
-                                  artificial_populate=names_to_add)
-
-
-    pickle.dump(vocab, open(params['model_save_name']+'vocab.pkl', 'wb'))
-    print("done pickling vocab")
-
-    # prepare training data and define transformation function
-    train_data = process_data(raw_data=debias_train_raw, vocab=vocab)
-    dev_data = process_data(raw_data=debias_dev_raw, vocab=vocab)
-    test_data = process_data(raw_data=debias_test_raw, vocab=vocab)
-
-    pad_token = params['pad_token']
-    pad_idx = vocab[pad_token]
-    collator = Collator(pad_idx)
-
-    batch_size = params['batch_size']
-
-    print("creating training data iterators")
-    train_iterator = torch.utils.data.DataLoader(train_data,
-                                                 batch_size,
-                                                 shuffle=True,
-                                                 collate_fn=collator.collate)
-
-    dev_iterator = torch.utils.data.DataLoader(dev_data,
-                                               batch_size,
-                                               shuffle=False,
-                                               collate_fn=collator.collate)
-
-    test_iterator = torch.utils.data.DataLoader(test_data,
-                                                batch_size,
-                                                shuffle=False,
-                                                collate_fn=collator.collate)
-
-    if params['model'] == 'bilstm':
-        input_dim = len(vocab)
-        emb_dim = bilstm_params['emb_dim']
-        hid_dim = bilstm_params['hid_dim']
-        output_dim = bilstm_params['output_dim']
-        n_layers = bilstm_params['n_layers']
-        dropout = bilstm_params['dropout']
-
-        model = BiLSTM(input_dim, emb_dim, hid_dim, output_dim, n_layers, dropout, pad_idx)
+        }
+        model = BiLSTM(model_params)
         model.apply(initialize_parameters)
-        criterion = nn.CrossEntropyLoss()
-
-    device = torch.device(params['device'])
-
-
-
-    print("reading new vector file")
-    pretrained_embedding = gensim.models.KeyedVectors.load_word2vec_format(params['pre_trained_word_vec'])
-    pretrained_vocab = [key for key in pretrained_embedding.vocab.keys()]
-
-
+    else:
+        raise CustomError("No such model found")
 
     print("updating embeddings")
-    unk_token = '<unk>'
     pretrained_embedding, unk_tokens = get_pretrained_embedding(initial_embedding=model.embedding,
-                                                                pretrained_vocab=pretrained_vocab,
                                                                 pretrained_vectors=pretrained_embedding,
                                                                 vocab=vocab,
-                                                                unk_token=unk_token,
                                                                 device=device)
 
+    print("model initialized")
     model = model.to(device)
     model.embedding.weight.data.copy_(pretrained_embedding)
+    if not learnable_embeddings:
+        model.embedding.weight.requires_grad = False
 
-
-    model.embedding.weight.requires_grad = False
-
+    # setting up optimizer
     optimizer = optim.Adam(model.parameters([param for param in model.parameters() if param.requires_grad == True]))
 
+    # setting up loss function
+    if number_of_labels == 1:
+        criterion = nn.MSELoss()
+    else:
+        criterion = nn.CrossEntropyLoss()
+
+    # Things still left
+    accuracy_calculation_function = calculate_accuracy_regression if number_of_labels == 1 else calculate_accuracy_classification
+
+    best_test_acc, best_valid_acc, test_acc_at_best_valid_acc = basic_training_loop(
+        n_epochs=epochs,
+         model=model,
+         train_iterator=train_iterator,
+         dev_iterator=dev_iterator,
+         optimizer=optimizer,
+         criterion=criterion,
+         device=device,
+         model_save_name=model_save_name,
+         accuracy_calculation_function = accuracy_calculation_function
+    )
+
+    print(f"BEST Test Acc: {best_test_acc} || Actual Test Acc: {test_acc_at_best_valid_acc} || Best Valid Acc {best_valid_acc}")
 
 
-    n_epochs = 20
-
-    best_valid_loss = float('inf')
-
-    for epoch in range(n_epochs):
-
-        start_time = time.monotonic()
-
-        train_loss, train_acc = train(model, train_iterator, optimizer, criterion, device)
-        valid_loss, valid_acc = evaluate(model, dev_iterator, criterion, device)
-        test_loss, test_acc = evaluate(model, dev_iterator, criterion, device)
-
-        end_time = time.monotonic()
-
-        epoch_mins, epoch_secs = epoch_time(start_time, end_time)
-
-        if valid_loss < best_valid_loss:
-            best_valid_loss = valid_loss
-            torch.save(model.state_dict(), params['model_save_name'])
-
-        print(f'Epoch: {epoch + 1:02} | Epoch Time: {epoch_mins}m {epoch_secs}s')
-        print(f'\tTrain Loss: {train_loss:.3f} | Train Acc: {train_acc * 100:.2f}%')
-        print(f'\t Val. Loss: {valid_loss:.3f} |  Val. Acc: {valid_acc * 100:.2f}%')
-        print(f'\t Val. Loss: {test_loss:.3f} |  Val. Acc: {test_acc * 100:.2f}%')
-
-
-
-
-
+if __name__ == '__main__':
+    main()
 
