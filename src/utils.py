@@ -102,6 +102,8 @@ def clean_text(text:str):
     text = text.strip()
     return text
 
+def clean_text_tweet(text:str):
+    return text.replace('#', '').replace('@', '')
 
 def get_pretrained_embedding(initial_embedding, pretrained_vocab, pretrained_vectors, vocab, unk_token, device):
     pretrained_embedding = torch.FloatTensor(initial_embedding.weight.clone()).cpu().detach().numpy()

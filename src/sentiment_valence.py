@@ -135,13 +135,14 @@ def transform_dataframe_to_dict(data, tokenizer):
         if len(tokenized_text[index]) > 1:
             new_final_data.append(f)
 
+
     # sanity check
     for f in new_final_data:
         assert len(f['tokenized_text']) > 1
 
     return new_final_data
 
-def process_data(raw_data, vocab):
+def process_data(raw_data, vocab, is_regression):
     """
     raw data is assumed to be tokenized
     Can't use the main one as this needs to be manipulated
@@ -166,6 +167,7 @@ class Collator:
         text = nn.utils.rnn.pad_sequence(text, padding_value=self.pad_idx)
 
         return labels, text, lengths
+
 
 def calculate_accuracy(predictions, labels):
     return scipy.stats.pearsonr(predictions.squeeze().detach().cpu().numpy(), labels.cpu().detach().cpu().numpy())[0]

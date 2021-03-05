@@ -57,16 +57,16 @@ device = 'cpu'
 
 from pathlib import Path
 
-file = Path("../data/wiki_debias_train.pkl")
+file = Path("../data/wiki/wiki_debias_train.pkl")
 
 if file.exists():
-    debias_train_raw = pickle.load(open('../data/wiki_debias_train.pkl', 'rb'))
-    debias_dev_raw = pickle.load(open('../data/wiki_debias_dev.pkl', 'rb'))
-    debias_test_raw = pickle.load(open('../data/wiki_debias_test.pkl', 'rb'))
+    debias_train_raw = pickle.load(open('../data/wiki/wiki_debias_train.pkl', 'rb'))
+    debias_dev_raw = pickle.load(open('../data/wiki/wiki_debias_dev.pkl', 'rb'))
+    debias_test_raw = pickle.load(open('../data/wiki/wiki_debias_test.pkl', 'rb'))
 else:
-    debias_train = Path('../data/wiki_debias_train.csv')
-    debias_dev = Path('../data/wiki_debias_dev.csv')
-    debias_test = Path('../data/wiki_debias_test.csv')
+    debias_train = Path('../data/wiki/wiki_debias_train.csv')
+    debias_dev = Path('../data/wiki/wiki_debias_dev.csv')
+    debias_test = Path('../data/wiki/wiki_debias_test.csv')
 
     # Optimize this later. We don't need pandas dataframe
     debias_train_raw = transform_dataframe_to_dict(data_frame=pd.read_csv(debias_train), tokenizer=tokenizer)
@@ -75,9 +75,9 @@ else:
 
     import pickle
 
-    pickle.dump(debias_train_raw, open('../data/wiki_debias_train.pkl', 'wb'))
-    pickle.dump(debias_dev_raw, open('../data/wiki_debias_dev.pkl', 'wb'))
-    pickle.dump(debias_test_raw, open('../data/wiki_debias_test.pkl', 'wb'))
+    pickle.dump(debias_train_raw, open('../data/wiki/wiki_debias_train.pkl', 'wb'))
+    pickle.dump(debias_dev_raw, open('../data/wiki/wiki_debias_dev.pkl', 'wb'))
+    pickle.dump(debias_test_raw, open('../data/wiki/wiki_debias_test.pkl', 'wb'))
 
 
 tokenizer = Tokenizer(spacy_model="en_core_web_sm", clean_text=clean_text, max_length=None)

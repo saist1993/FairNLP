@@ -26,6 +26,7 @@ from utils import resolve_device, CustomError
 from training_loop import basic_training_loop
 from models import BiLSTM, initialize_parameters
 from utils import clean_text as clean_text_function
+from utils import clean_text_tweet as clean_text_function_tweet
 
 
 def calculate_accuracy_classification(predictions, labels):
@@ -46,7 +47,7 @@ def init_tokenizer(tokenizer:str,
     if tokenizer.lower() == 'spacy':
         return tokenizer_wrapper.SpacyTokenizer(spacy_model="en_core_web_sm", clean_text=clean_text, max_length=max_length)
     elif tokenizer.lower() == 'tweet':
-        return tokenizer_wrapper.TwitterTokenizer(clean_text=clean_text, max_length=max_length)
+        return tokenizer_wrapper.TwitterTokenizer(clean_text=clean_text_function_tweet, max_length=max_length)
     else:
         raise CustomError("Tokenizer not found")
 
