@@ -130,6 +130,11 @@ class WikiSimpleClassification:
             pickle.dump(debias_dev_raw, open(f'../data/wiki/wiki_{self.type}_dev.pkl', 'wb'))
             pickle.dump(debias_test_raw, open(f'../data/wiki/wiki_{self.type}_test.pkl', 'wb'))
 
+        # infer number of lables here
+        number_of_labels = len(list(set([d['lable'] for d in debias_dev_raw])))
+        if number_of_labels > 100:
+            number_of_labels = 1 # if there are too many labels, most probably it is a regression task and not classifiation
+
         vocab = self.build_vocab_from_data(raw_train_data=debias_train_raw, raw_dev_data=debias_dev_raw,
                                   artificial_populate=self.artificial_populate)
 
@@ -156,7 +161,7 @@ class WikiSimpleClassification:
                                                     shuffle=False,
                                                     collate_fn=self.collate)
 
-        number_of_labels = len(list(set(train_data.get_labels())))
+        # number_of_labels = len(list(set(train_data.get_labels())))
 
         if number_of_labels > 100:
             number_of_labels = 1 # if there are too many labels, most probably it is a regression task and not classifiation
@@ -230,6 +235,11 @@ class ValencePrediction(WikiSimpleClassification):
         train_processed = self.transform_dataframe_to_dict(data=train, tokenizer=self.tokenizer)
         dev_processed = self.transform_dataframe_to_dict(data=dev, tokenizer=self.tokenizer)
         test_processed = self.transform_dataframe_to_dict(data=test, tokenizer=self.tokenizer)
+
+        # infer number of lables here
+        number_of_labels = len(list(set([d['lable'] for d in dev_processed])))
+        if number_of_labels > 100:
+            number_of_labels = 1 # if there are too many labels, most probably it is a regression task and not classifiation
 
         vocab = self.build_vocab_from_data(raw_train_data=dev_processed, raw_dev_data=train_processed,
                                            artificial_populate=self.artificial_populate)
