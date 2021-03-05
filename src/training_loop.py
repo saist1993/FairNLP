@@ -22,7 +22,8 @@ def train(model, iterator, optimizer, criterion, device, accuracy_calculation_fu
 
         predictions = model(text, lengths)
 
-        loss = criterion(predictions, labels)
+        # loss = criterion(predictions, labels)
+        loss = criterion(predictions.squeeze(), labels.squeeze())
 
         acc = accuracy_calculation_function(predictions, labels)
 
@@ -48,7 +49,8 @@ def evaluate(model, iterator, criterion, device, accuracy_calculation_function):
 
             predictions = model(text, lengths)
 
-            loss = criterion(predictions, labels)
+            # loss = criterion(predictions, labels)
+            loss = criterion(predictions.squeeze(), labels.squeeze())
 
             acc = accuracy_calculation_function(predictions, labels)
 
