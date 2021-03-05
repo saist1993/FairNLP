@@ -22,7 +22,10 @@ class WikiSimpleClassification:
         '''
         self.dataset_name = dataset_name
         self.tokenizer = params['tokenizer']
-        self.type = dataset_name.split('_')[1]  # type can be debias, main etc.
+        try:
+            self.type = dataset_name.split('_')[1]  # type can be debias, main etc.
+        except:
+            self.type = None
         self.artificial_populate = params['artificial_populate']
         self.pad_token = params['pad_token']
         self.batch_size = params['batch_size']
