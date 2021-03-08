@@ -102,6 +102,7 @@ def get_pretrained_embedding(initial_embedding, pretrained_vectors, vocab, devic
 @click.option('-max_len', '--max_length', type=int, default=None)
 @click.option('-epochs', '--epochs', type=int, default=30)
 @click.option('-learnable_embeddings', '--learnable_embeddings', type=bool, default=False)
+@click.option('-vocab_location', '--vocab_location', type=bool, default=False, help="file path location. Generally used while testing to load a vocab. Type is incorrect.")
 
 def main(emb_dim:int,
          spacy_model:str,
@@ -118,7 +119,8 @@ def main(emb_dim:int,
          use_clean_text:bool,
          max_length:Optional[int],
          epochs:int,
-         learnable_embeddings:bool):
+         learnable_embeddings:bool,
+         vocab_location:Optional[None]):
 
     print(f"seed is {seed}")
     torch.manual_seed(seed)
@@ -127,9 +129,11 @@ def main(emb_dim:int,
     torch.backends.cudnn.benchmark = False
     device = resolve_device() # if cuda: then cuda else cpu
 
-    # set clean text and max length
+
+    # set clean text, max length, vocab
     clean_text = clean_text_function if use_clean_text else None
     max_length = max_length if max_length else None
+    vocab = pickle.load(open(vocab_location, 'rb')) if vocab_location else None
 
     print(f"initializing tokenizer: {tokenizer_type}")
     tokenizer = init_tokenizer(
@@ -143,7 +147,8 @@ def main(emb_dim:int,
         'artificial_populate': [],
         'pad_token': pad_token,
         'batch_size': batch_size,
-        'is_regression': regression
+        'is_regression': regression,
+        'vocab': vocab
     }
     vocab, number_of_labels, train_iterator, dev_iterator, test_iterator = \
         generate_data_iterator(dataset_name=dataset_name, **iterator_params)

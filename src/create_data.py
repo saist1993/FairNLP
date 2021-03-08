@@ -31,6 +31,7 @@ class WikiSimpleClassification:
         self.batch_size = params['batch_size']
         self.is_regression = params['is_regression']
         self.pad_idx = -1 # this gets updated in the run function once the vocab is made.
+        self.vocab = params['vocab'] # while training set this to be None
 
     def transform_dataframe_to_dict(self, data_frame:pd, tokenizer:Callable):
         """
@@ -139,8 +140,11 @@ class WikiSimpleClassification:
         if number_of_labels > 100:
             number_of_labels = 1 # if there are too many labels, most probably it is a regression task and not classifiation
 
-        vocab = self.build_vocab_from_data(raw_train_data=debias_train_raw, raw_dev_data=debias_dev_raw,
-                                  artificial_populate=self.artificial_populate)
+        if self.vocab:
+            vocab = self.vocab
+        else:
+            vocab = self.build_vocab_from_data(raw_train_data=debias_train_raw, raw_dev_data=debias_dev_raw,
+                                      artificial_populate=self.artificial_populate)
 
         train_data = self.process_data(raw_data=debias_train_raw, vocab=vocab)
         dev_data = self.process_data(raw_data=debias_dev_raw, vocab=vocab)
@@ -245,8 +249,12 @@ class ValencePrediction(WikiSimpleClassification):
         if number_of_labels > 100:
             number_of_labels = 1 # if there are too many labels, most probably it is a regression task and not classifiation
 
-        vocab = self.build_vocab_from_data(raw_train_data=dev_processed, raw_dev_data=train_processed,
+        if self.vocab:
+            vocab = self.vocab
+        else:
+            vocab = self.build_vocab_from_data(raw_train_data=dev_processed, raw_dev_data=train_processed,
                                            artificial_populate=self.artificial_populate)
+
 
         train_data = self.process_data(raw_data=train_processed, vocab=vocab)
         dev_data = self.process_data(raw_data=dev_processed, vocab=vocab)
