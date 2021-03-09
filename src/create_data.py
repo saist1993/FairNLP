@@ -331,13 +331,13 @@ class BiasinBiosSimple(WikiSimpleClassification):
 
         # Find all professional. Create a professional to id list
         all_profession = list(set([t['p'] for t in train]))
-        professional_to_id = {profession:index for index, profession in enumerate(all_profession)}
-        pickle.dump(professional_to_id, open(self.data_dir / Path('profession_to_id.pickle'), "wb"))
+        profession_to_id = {profession:index for index, profession in enumerate(all_profession)}
+        pickle.dump(profession_to_id, open(self.data_dir / Path('profession_to_id.pickle'), "wb"))
 
         # Tokenization and id'fying the profession
-        train_processed = self.transform_dataframe_to_dict(data=train, tokenizer=self.tokenizer)
-        dev_processed = self.transform_dataframe_to_dict(data=dev, tokenizer=self.tokenizer)
-        test_processed = self.transform_dataframe_to_dict(data=test, tokenizer=self.tokenizer)
+        train_processed = self.transform_dataframe_to_dict(data=train, tokenizer=self.tokenizer, profession_to_id=profession_to_id)
+        dev_processed = self.transform_dataframe_to_dict(data=dev, tokenizer=self.tokenizer, profession_to_id=profession_to_id)
+        test_processed = self.transform_dataframe_to_dict(data=test, tokenizer=self.tokenizer, profession_to_id=profession_to_id)
 
         number_of_labels = len(all_profession)
 
