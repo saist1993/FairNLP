@@ -65,8 +65,8 @@ def generate_data_iterator(dataset_name:str, **kwargs):
         vocab, number_of_labels, train_iterator, dev_iterator, test_iterator = dataset_creator.run()
         return vocab, number_of_labels, train_iterator, dev_iterator, test_iterator
 
-    elif dataset_name.lower() == 'bias_in_biom':
-        dataset_creator = create_data.BiasinBiomSimple(dataset_name=dataset_name,**kwargs)
+    elif dataset_name.lower() == 'bias_in_bios':
+        dataset_creator = create_data.BiasinBiosSimple(dataset_name=dataset_name, **kwargs)
         vocab, number_of_labels, train_iterator, dev_iterator, test_iterator = dataset_creator.run()
         return vocab, number_of_labels, train_iterator, dev_iterator, test_iterator
 
