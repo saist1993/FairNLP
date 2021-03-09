@@ -48,6 +48,8 @@ def init_tokenizer(tokenizer:str,
         return tokenizer_wrapper.SpacyTokenizer(spacy_model="en_core_web_sm", clean_text=clean_text, max_length=max_length)
     elif tokenizer.lower() == 'tweet':
         return tokenizer_wrapper.TwitterTokenizer(clean_text=clean_text_function_tweet, max_length=max_length)
+    elif tokenizer.lower() == 'simple':
+        return tokenizer_wrapper.SimpleTokenizer(clean_text=clean_text_function_tweet, max_length=max_length)
     else:
         raise CustomError("Tokenizer not found")
 
@@ -62,6 +64,12 @@ def generate_data_iterator(dataset_name:str, **kwargs):
         dataset_creator = create_data.ValencePrediction(dataset_name=dataset_name,**kwargs)
         vocab, number_of_labels, train_iterator, dev_iterator, test_iterator = dataset_creator.run()
         return vocab, number_of_labels, train_iterator, dev_iterator, test_iterator
+
+    elif dataset_name.lower() == 'bias_in_biom':
+        dataset_creator = create_data.BiasinBiomSimple(dataset_name=dataset_name,**kwargs)
+        vocab, number_of_labels, train_iterator, dev_iterator, test_iterator = dataset_creator.run()
+        return vocab, number_of_labels, train_iterator, dev_iterator, test_iterator
+
     else:
         raise CustomError("No such dataset")
 
