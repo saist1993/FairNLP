@@ -288,7 +288,7 @@ class ValencePrediction(WikiSimpleClassification):
 
 
 
-class BiasinBiomSimple(WikiSimpleClassification):
+class BiasinBiosSimple(WikiSimpleClassification):
 
     def __init__(self, dataset_name: str, **params):
         super().__init__(dataset_name, **params)
