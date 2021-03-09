@@ -76,3 +76,36 @@ class TwitterTokenizer:
         for t in texts:
             tokenized_list.append(self.tokenize(t))
         return tokenized_list
+
+
+class SimpleTokenizer:
+    def __init__(self, clean_text=clean_text, max_length=None):
+        self.clean_text = clean_text
+        self.max_length = max_length
+
+    def tokenize(self, s):
+
+        tokens = s.split(" ")
+        final_token = []
+        if self.clean_text:
+            for t in tokens:
+                clean_t = self.clean_text(t)
+                if clean_t:
+                    final_token.append(clean_t)
+
+            tokens = final_token
+        # tokens = [token.text for token in doc]
+
+        if self.max_length:
+            tokens = tokens[:self.max_length]
+
+        return tokens
+
+    def batch_tokenize(self, texts: list):
+        """tokenizes a list via nlp pipeline space"""
+        # nlp = self.tokenizer_model
+
+        tokenized_list = []
+        for t in texts:
+            tokenized_list.append(self.tokenize(t))
+        return tokenized_list

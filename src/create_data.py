@@ -285,3 +285,103 @@ class ValencePrediction(WikiSimpleClassification):
         #     number_of_labels = 1 # if there are too many labels, most probably it is a regression task and not classifiation
 
         return vocab, number_of_labels, train_iterator, dev_iterator, test_iterator
+
+
+
+class BiasinBiomSimple(WikiSimpleClassification):
+
+    def __init__(self, dataset_name: str, **params):
+        super().__init__(dataset_name, **params)
+        self.data_dir = Path('../data/bias_in_bios/') # don't really need it. The path is hard-coded
+
+    def read_data(self, path):
+        with open(path, "rb") as f:
+            data = pickle.load(f)
+        return data
+
+    def transform_dataframe_to_dict(self, data, tokenizer, profession_to_id):
+        """
+        Although the data is not a dataframe. Keeping the same name so as to reflect legacy.
+        :param data:
+        :param tokenizer: this will be a simple splitting based on space.
+        :return:
+        """
+        new_data = []
+        for d in data:
+            temp = {
+                'lable': profession_to_id[d['p']],
+                'original_text': d['text'],
+                'text': d['hard_text'],
+                'text_without_gender': d['text_without_gender'],
+                'tokenized_text': tokenizer.tokenize(d['hard_text']) # this is a split by space tokenizer.
+            }
+            new_data.append(temp)
+
+        return new_data
+
+
+    def run(self):
+
+        assert self.is_regression == False
+
+
+        train = self.read_data("../data/bias_in_bios/train.pickle")
+        dev = self.read_data("../data/bias_in_bios/dev.pickle")
+        test = self.read_data("../data/bias_in_bios/test.pickle")
+
+        # Find all professional. Create a professional to id list
+        all_profession = len(list(set([t['p'] for t in train])))
+        professional_to_id = {profession:index for index, profession in enumerate(all_profession)}
+        pickle.dump(professional_to_id, open(self.data_dir + 'profession_to_id.pickle', "wb"))
+
+        # Tokenization and id'fying the profession
+        train_processed = self.transform_dataframe_to_dict(data=train, tokenizer=self.tokenizer)
+        dev_processed = self.transform_dataframe_to_dict(data=dev, tokenizer=self.tokenizer)
+        test_processed = self.transform_dataframe_to_dict(data=test, tokenizer=self.tokenizer)
+
+        number_of_labels = len(all_profession)
+
+
+        if self.vocab:
+            vocab = self.vocab
+        else:
+            vocab = self.build_vocab_from_data(raw_train_data=dev_processed, raw_dev_data=train_processed,
+                                           artificial_populate=self.artificial_populate)
+
+        train_data = self.process_data(raw_data=train_processed, vocab=vocab)
+        dev_data = self.process_data(raw_data=dev_processed, vocab=vocab)
+        test_data = self.process_data(raw_data=test_processed, vocab=vocab)
+
+        self.pad_idx = vocab[self.pad_token]
+
+
+        print("creating training data iterators")
+        train_iterator = torch.utils.data.DataLoader(train_data,
+                                                     self.batch_size,
+                                                     shuffle=True,
+                                                     collate_fn=self.collate)
+
+        dev_iterator = torch.utils.data.DataLoader(dev_data,
+                                                   self.batch_size,
+                                                   shuffle=False,
+                                                   collate_fn=self.collate)
+
+        test_iterator = torch.utils.data.DataLoader(test_data,
+                                                    self.batch_size,
+                                                    shuffle=False,
+                                                    collate_fn=self.collate)
+
+        # number_of_labels = len(list(set(train_data.get_labels())))
+
+        if number_of_labels > 100:
+            number_of_labels = 1 # if there are too many labels, most probably it is a regression task and not classifiation
+
+        return vocab, number_of_labels, train_iterator, dev_iterator, test_iterator
+
+
+
+
+
+
+
+
