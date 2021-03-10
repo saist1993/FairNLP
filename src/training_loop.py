@@ -160,6 +160,7 @@ def basic_training_loop(
         epoch_mins, epoch_secs = epoch_time(start_time, end_time)
 
         if valid_loss < best_valid_loss:
+            print(f"model saved as: {model_save_name}")
             best_valid_loss = valid_loss
             torch.save(model.state_dict(), model_save_name)
 
