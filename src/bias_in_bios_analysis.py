@@ -126,9 +126,10 @@ if __name__ == '__main__':
     nlp = spacy.load("en_core_web_sm")
     device = resolve_device()
 
-    model_path = '../toxic_models/bilstm_adv.pt'
-    vocab_path = '../toxic_models/bilstm_adv.pt_vocab.pkl'
-    prof_to_id = '../toxic_models/profession_to_id.pickle'
+
+    model_path = '../../../storage/model_toxic/bilstm_adv.pt' # '../toxic_models/bilstm_adv.pt'
+    vocab_path = '../../../storage/model_toxic/bilstm_adv.pt_vocab.pkl'
+    prof_to_id = '../data/bias_in_bios/profession_to_id.pickle'
 
     prof_to_id = pickle.load(open(prof_to_id, 'rb'))
     id_to_prof = {value: key for key, value in prof_to_id.items()}

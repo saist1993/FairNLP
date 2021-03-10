@@ -98,6 +98,7 @@ def evaluate_adv(model, iterator, criterion, device, accuracy_calculation_functi
     epoch_acc = 0
     model.eval()
     loss_aux_scale = other_params["loss_aux_scale"]
+    all_predictions = []
 
     with torch.no_grad():
         for labels, text, lengths, aux in tqdm(iterator):
@@ -111,7 +112,7 @@ def evaluate_adv(model, iterator, criterion, device, accuracy_calculation_functi
             loss_main = criterion(predictions.squeeze(), labels.squeeze())
             loss_aux = criterion(aux_predictions.squeeze(), aux.squeeze())
             loss = loss_main + (loss_aux_scale * loss_aux)
-
+            # all_predictions.append(aux_predictions.squeeze(),labels, aux.squeeze(), )
             acc = accuracy_calculation_function(predictions, labels)
 
             epoch_loss += loss.item()
