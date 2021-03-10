@@ -104,7 +104,7 @@ class BiLSTMAdv(nn.Module):
         self.dropout = nn.Dropout(dropout)
 
         self.adv = DomainAdv(number_of_layers=adv_number_of_layers, input_dim=2*hid_dim,
-                             hidden_dim=hid_dim, output_dim=output_dim, dropout=adv_dropout).to(device=self.device)
+                             hidden_dim=hid_dim, output_dim=2, dropout=adv_dropout).to(device=self.device)
 
         self.adv.apply(initialize_parameters) # don't know, if this is needed.
 
