@@ -71,6 +71,8 @@ class DomainAdv(nn.Module):
             else:
                 self.fc_layers.append(nn.Linear(hidden_dim, output_dim)) # @TODO: see if there is a need for a softmax via sigmoid or something
 
+        self.fc_layers = torch.nn.ModuleList(self.fc_layers)
+
     def forward(self, x):
         for index, layer in enumerate(self.fc_layers):
             if len(self.fc_layers)-1 != index:
