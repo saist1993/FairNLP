@@ -1,30 +1,21 @@
 # Provides some functions which can be called to provide some basic analysis
 
-import torch
-import torch.nn as nn
 
-
-from tqdm.auto import tqdm
-import pickle
-
-from sklearn.metrics import roc_auc_score, auc
-from string import Template
-from tqdm.auto import tqdm
 import spacy
-import itertools
+import pickle
+import numpy as np
+
 
 from main import *
 from utils import resolve_device
 from utils import clean_text as clean_text_function
-from utils import clean_text_tweet as clean_text_function_tweet
 
 from config import BILSTM_PARAMS
 from models import BiLSTM, BiLSTMAdv
 
 
-import pickle
-from pathlib import Path
-from utils import GradReverse
+
+
 
 
 
@@ -38,6 +29,26 @@ def predict(tokenizer, vocab, model, device, sentence):
     probabilities = nn.functional.softmax(prediction, dim = -1)
     return torch.argmax(probabilities.squeeze()).item()
 
+
+def get_acc(sub_data:list):
+    acc = []
+    for t in sub_data:
+        if t['p'] == t['pred_prof']:
+            acc.append(1.0)
+        else:
+            acc.append(0.0)
+    return np.mean(acc)
+
+def calculate_rms(acc_data):
+    acc = [(i[2]-i[3])**2 for i in acc_data]
+    return np.sqrt(np.sum(acc))
+
+def return_larget_diff(acc_data):
+    profession, diff = acc_data[0][0], abs(acc_data[0][1]-acc_data[0][2])
+    for i in acc_data[1:]:
+        if diff < abs(i[1]-i[2]):
+            profession, diff = i[0], abs(i[1]-i[2])
+    return profession, diff
 
 
 def generate_predictions(model,
@@ -63,6 +74,37 @@ def generate_predictions(model,
         new_data.append(t)
 
     pickle.dump(new_data, open(save_data_at, 'wb'))
+
+    test_examples_professional = {prof: {'male': [], 'female': []} for id, prof in id_to_profession.items()}
+
+    for data_point in new_data:
+
+        if data_point['g'] == 'f':
+            test_examples_professional[data_point['p']]['female'] = test_examples_professional[data_point['p']][
+                                                                        'female'] + [data_point]
+        elif data_point['g'] == 'm':
+            test_examples_professional[data_point['p']]['male'] = test_examples_professional[data_point['p']][
+                                                                      'male'] + [data_point]
+        else:
+            raise KeyError
+
+    final_acc = []
+    for key, value in test_examples_professional.items():
+        temp = [
+            key,
+            get_acc(value['male'] + value['female']),
+            get_acc(value['male']),
+            get_acc(value['female'])
+        ]
+        final_acc.append(temp)
+
+    print(final_acc)
+    print(calculate_rms(final_acc))
+    print(return_larget_diff(final_acc))
+
+
+
+
 
 if __name__ == '__main__':
     def load_dataset(path):
