@@ -96,7 +96,7 @@ def train_adv(model, iterator, optimizer, criterion, device, accuracy_calculatio
 def evaluate_adv(model, iterator, criterion, device, accuracy_calculation_function, other_params):
     epoch_loss = 0
     epoch_acc = 0
-    model.evaluate()
+    model.eval()
     loss_aux_scale = other_params["loss_aux_scale"]
 
     with torch.no_grad:
