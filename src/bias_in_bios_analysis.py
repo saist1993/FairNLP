@@ -65,7 +65,7 @@ def generate_predictions(model,
     :param id_to_professional:
     :return:
     """
-
+    print(f"device here is {device}")
     new_data = []
     for t in tqdm(data):
         pred_prof = id_to_profession[
