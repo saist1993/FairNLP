@@ -2,11 +2,12 @@
 
 import re
 import warnings
+from tqdm import tqdm
 from typing import List, Dict
 
 import torch
 import torch.nn as nn
-from tqdm import tqdm
+from torch.autograd import Function
 
 
 class CustomError(Exception):
@@ -177,6 +178,24 @@ def sequential_transforms(*transforms):
 
     return func
 
+
+class GradReverse(Function):
+    """
+        Torch function used to invert the sign of gradients (to be used for argmax instead of argmin)
+        Usage:
+            x = GradReverse.apply(x) where x is a tensor with grads.
+
+        Copied from here: https://github.com/geraltofrivia/mytorch/blob/0ce7b23ff5381803698f6ca25bad1783d21afd1f/src/mytorch/utils/goodies.py#L39
+    """
+    @staticmethod
+    def forward(ctx, x):
+        return x.view_as(x)
+
+    @staticmethod
+    def backward(ctx, grad_output):
+        return grad_output.neg()
+
+
 class TextClassificationDataset(torch.utils.data.Dataset):
     """Defines an abstract text classification datasets.
        Currently, we only support the following datasets:
@@ -194,6 +213,7 @@ class TextClassificationDataset(torch.utils.data.Dataset):
     def __init__(self, data, vocab, transforms):
         """Initiate text-classification dataset.
 
+        Assumption is that the first element in the list i.e. 0th is the label
         Args:
             data: a list of label and text tring tuple. label is an integer.
                 [(label1, text1), (label2, text2), (label2, text3)]
@@ -209,7 +229,13 @@ class TextClassificationDataset(torch.utils.data.Dataset):
     def __getitem__(self, i):
         label = self.data[i][0]
         txt = self.data[i][1]
-        return (self.transforms[0](label), self.transforms[1](txt))
+        # return (self.transforms[0](label), self.transforms[1](txt))
+
+        final_data = []
+        for data, transformation in zip(self.data[i], self.transforms):
+            final_data.append(transformation(data))
+
+        return tuple(final_data)
 
     def __len__(self):
         return len(self.data)

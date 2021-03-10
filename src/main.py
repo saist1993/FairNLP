@@ -24,8 +24,8 @@ import tokenizer_wrapper
 from config import BILSTM_PARAMS
 from utils import resolve_device, CustomError
 from training_loop import basic_training_loop
-from models import BiLSTM, initialize_parameters
 from utils import clean_text as clean_text_function
+from models import BiLSTM, initialize_parameters, BiLSTMAdv
 from utils import clean_text_tweet as clean_text_function_tweet
 
 
@@ -66,9 +66,14 @@ def generate_data_iterator(dataset_name:str, **kwargs):
         return vocab, number_of_labels, train_iterator, dev_iterator, test_iterator
 
     elif dataset_name.lower() == 'bias_in_bios':
-        dataset_creator = create_data.BiasinBiosSimple(dataset_name=dataset_name, **kwargs)
-        vocab, number_of_labels, train_iterator, dev_iterator, test_iterator = dataset_creator.run()
-        return vocab, number_of_labels, train_iterator, dev_iterator, test_iterator
+        if kwargs['is_adv']:
+            dataset_creator = create_data.BiasinBiosSimpleAdv(dataset_name=dataset_name, **kwargs)
+            vocab, number_of_labels, train_iterator, dev_iterator, test_iterator = dataset_creator.run()
+            return vocab, number_of_labels, train_iterator, dev_iterator, test_iterator
+        else:
+            dataset_creator = create_data.BiasinBiosSimple(dataset_name=dataset_name, **kwargs)
+            vocab, number_of_labels, train_iterator, dev_iterator, test_iterator = dataset_creator.run()
+            return vocab, number_of_labels, train_iterator, dev_iterator, test_iterator
 
     else:
         raise CustomError("No such dataset")
@@ -111,6 +116,10 @@ def get_pretrained_embedding(initial_embedding, pretrained_vectors, vocab, devic
 @click.option('-epochs', '--epochs', type=int, default=30)
 @click.option('-learnable_embeddings', '--learnable_embeddings', type=bool, default=False)
 @click.option('-vocab_location', '--vocab_location', type=bool, default=False, help="file path location. Generally used while testing to load a vocab. Type is incorrect.")
+@click.option('-is_adv', '--is_adv', type=bool, default=False, help="if True; adds an adversarial loss to the mix.")
+@click.option('-adv_loss_scale', '--adv_loss_scale', type=float, default=0.5, help="sets the adverserial scale (lambda)")
+@click.option('-use_pretrained_emb', '--use_pretrained_emb', type=bool, default=True, help="uses pretrianed if true else random")
+@click.option('-default_emb_dim', '--default_emb_dim', type=int, default=100, help="uses pretrianed if true else random")
 
 def main(emb_dim:int,
          spacy_model:str,
@@ -128,7 +137,11 @@ def main(emb_dim:int,
          max_length:Optional[int],
          epochs:int,
          learnable_embeddings:bool,
-         vocab_location:Optional[None]):
+         vocab_location:Optional[None],
+         is_adv:bool,
+         adv_loss_scale:float,
+         use_pretrained_emb:bool,
+         default_emb_dim:int):
 
     print(f"seed is {seed}")
     torch.manual_seed(seed)
@@ -156,7 +169,8 @@ def main(emb_dim:int,
         'pad_token': pad_token,
         'batch_size': batch_size,
         'is_regression': regression,
-        'vocab': vocab
+        'vocab': vocab,
+        'is_adv': is_adv
     }
     vocab, number_of_labels, train_iterator, dev_iterator, test_iterator = \
         generate_data_iterator(dataset_name=dataset_name, **iterator_params)
@@ -165,11 +179,15 @@ def main(emb_dim:int,
     # need to pickle vocab. Same name as model save name but with additional "_vocab.pkl"
     pickle.dump(vocab, open(model_save_name + '_vocab.pkl', 'wb'))
     # load pre-trained embeddings
-    print(f"reading pre-trained vector file from: {pre_trained_embeddings}")
-    pretrained_embedding = gensim.models.KeyedVectors.load_word2vec_format(pre_trained_embeddings)
+    if use_pretrained_emb:
+        print(f"reading pre-trained vector file from: {pre_trained_embeddings}")
+        pretrained_embedding = gensim.models.KeyedVectors.load_word2vec_format(pre_trained_embeddings)
 
-    # infer input dim based on the pretrained_embeddings
-    emb_dim = pretrained_embedding.vectors.shape[1]
+        # infer input dim based on the pretrained_embeddings
+        emb_dim = pretrained_embedding.vectors.shape[1]
+    else:
+        emb_dim = default_emb_dim
+
     output_dim = number_of_labels
     input_dim = len(vocab)
 
@@ -181,23 +199,33 @@ def main(emb_dim:int,
             'output_dim': output_dim,
             'n_layers': BILSTM_PARAMS['n_layers'],
             'dropout': BILSTM_PARAMS['dropout'],
-            'pad_idx': vocab['pad_token']
-
+            'pad_idx': vocab['pad_token'],
+            'adv_number_of_layers' : BILSTM_PARAMS['adv_number_of_layers'],
+            'adv_dropout' : BILSTM_PARAMS['adv_dropout'],
+            'device': device
         }
-        model = BiLSTM(model_params)
-        model.apply(initialize_parameters)
+        if is_adv:
+            model = BiLSTMAdv(model_params)
+            model.apply(initialize_parameters)
+        else:
+            model = BiLSTM(model_params)
+            model.apply(initialize_parameters)
     else:
         raise CustomError("No such model found")
 
-    print("updating embeddings")
-    pretrained_embedding, unk_tokens = get_pretrained_embedding(initial_embedding=model.embedding,
-                                                                pretrained_vectors=pretrained_embedding,
-                                                                vocab=vocab,
-                                                                device=device)
-
     print("model initialized")
     model = model.to(device)
-    model.embedding.weight.data.copy_(pretrained_embedding)
+
+    if use_pretrained_emb:
+        print("updating embeddings")
+        pretrained_embedding, unk_tokens = get_pretrained_embedding(initial_embedding=model.embedding,
+                                                                    pretrained_vectors=pretrained_embedding,
+                                                                    vocab=vocab,
+                                                                    device=device)
+
+
+        model.embedding.weight.data.copy_(pretrained_embedding)
+
     if not learnable_embeddings:
         model.embedding.weight.requires_grad = False
 
@@ -213,6 +241,11 @@ def main(emb_dim:int,
     # Things still left
     accuracy_calculation_function = calculate_accuracy_regression if number_of_labels == 1 else calculate_accuracy_classification
 
+    other_params = {
+        'is_adv': is_adv,
+        'loss_aux_scale': adv_loss_scale
+    }
+
     best_test_acc, best_valid_acc, test_acc_at_best_valid_acc = basic_training_loop(
          n_epochs=epochs,
          model=model,
@@ -223,7 +256,8 @@ def main(emb_dim:int,
          criterion=criterion,
          device=device,
          model_save_name=model_save_name,
-         accuracy_calculation_function = accuracy_calculation_function
+         accuracy_calculation_function = accuracy_calculation_function,
+        other_params=other_params
     )
 
     print(f"BEST Test Acc: {best_test_acc} || Actual Test Acc: {test_acc_at_best_valid_acc} || Best Valid Acc {best_valid_acc}")

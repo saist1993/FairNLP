@@ -20,7 +20,7 @@ from torchtext.experimental.functional import sequential_transforms, vocab_func,
 
 from models import *
 import static_db
-from main import clean_text, Tokenizer, build_vocab_from_data, get_pretrained_embedding, epoch_time
+from main_without_experimental import clean_text, Tokenizer, build_vocab_from_data, get_pretrained_embedding, epoch_time
 from utils import parse_args
 
 import random
@@ -142,7 +142,7 @@ def transform_dataframe_to_dict(data, tokenizer):
 
     return new_final_data
 
-def process_data(raw_data, vocab, is_regression):
+def process_data(raw_data, vocab):
     """
     raw data is assumed to be tokenized
     Can't use the main one as this needs to be manipulated
@@ -167,7 +167,6 @@ class Collator:
         text = nn.utils.rnn.pad_sequence(text, padding_value=self.pad_idx)
 
         return labels, text, lengths
-
 
 def calculate_accuracy(predictions, labels):
     return scipy.stats.pearsonr(predictions.squeeze().detach().cpu().numpy(), labels.cpu().detach().cpu().numpy())[0]
