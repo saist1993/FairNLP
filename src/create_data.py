@@ -287,7 +287,6 @@ class ValencePrediction(WikiSimpleClassification):
         return vocab, number_of_labels, train_iterator, dev_iterator, test_iterator
 
 
-
 class BiasinBiosSimple(WikiSimpleClassification):
 
     def __init__(self, dataset_name: str, **params):
@@ -338,6 +337,134 @@ class BiasinBiosSimple(WikiSimpleClassification):
         train_processed = self.transform_dataframe_to_dict(data=train, tokenizer=self.tokenizer, profession_to_id=profession_to_id)
         dev_processed = self.transform_dataframe_to_dict(data=dev, tokenizer=self.tokenizer, profession_to_id=profession_to_id)
         test_processed = self.transform_dataframe_to_dict(data=test, tokenizer=self.tokenizer, profession_to_id=profession_to_id)
+
+        number_of_labels = len(all_profession)
+
+
+        if self.vocab:
+            vocab = self.vocab
+        else:
+            vocab = self.build_vocab_from_data(raw_train_data=dev_processed, raw_dev_data=train_processed,
+                                           artificial_populate=self.artificial_populate)
+
+        train_data = self.process_data(raw_data=train_processed, vocab=vocab)
+        dev_data = self.process_data(raw_data=dev_processed, vocab=vocab)
+        test_data = self.process_data(raw_data=test_processed, vocab=vocab)
+
+        self.pad_idx = vocab[self.pad_token]
+
+
+        print("creating training data iterators")
+        train_iterator = torch.utils.data.DataLoader(train_data,
+                                                     self.batch_size,
+                                                     shuffle=True,
+                                                     collate_fn=self.collate)
+
+        dev_iterator = torch.utils.data.DataLoader(dev_data,
+                                                   self.batch_size,
+                                                   shuffle=False,
+                                                   collate_fn=self.collate)
+
+        test_iterator = torch.utils.data.DataLoader(test_data,
+                                                    self.batch_size,
+                                                    shuffle=False,
+                                                    collate_fn=self.collate)
+
+        # number_of_labels = len(list(set(train_data.get_labels())))
+
+        if number_of_labels > 100:
+            number_of_labels = 1 # if there are too many labels, most probably it is a regression task and not classifiation
+
+        return vocab, number_of_labels, train_iterator, dev_iterator, test_iterator
+
+class BiasinBiosSimpleAdv(WikiSimpleClassification):
+
+    def __init__(self, dataset_name: str, **params):
+        super().__init__(dataset_name, **params)
+        self.data_dir = Path('../data/bias_in_bios/') # don't really need it. The path is hard-coded
+
+    def read_data(self, path):
+        with open(path, "rb") as f:
+            data = pickle.load(f)
+        return data
+
+    def process_data(self, raw_data, vocab):
+        """raw data is assumed to be tokenized"""
+        final_data = [(data_point['lable'], data_point['tokenized_text'], data_point['gender']) for data_point in raw_data]
+        text_transformation = sequential_transforms(vocab_func(vocab),
+                                                    totensor(dtype=torch.long))
+        if self.is_regression:
+            label_transform = sequential_transforms(totensor(dtype=torch.float))
+        else:
+            label_transform = sequential_transforms(totensor(dtype=torch.long))
+
+        gender_transformation = sequential_transforms(totensor(dtype=torch.long))
+
+        transforms = (label_transform, text_transformation, gender_transformation) # Needs to be in the same order as final data elements
+
+        return TextClassificationDataset(final_data, vocab, transforms)
+
+
+    def transform_dataframe_to_dict(self, data, tokenizer, profession_to_id, gender_to_id):
+        """
+        Although the data is not a dataframe. Keeping the same name so as to reflect legacy.
+        :param data:
+        :param tokenizer: this will be a simple splitting based on space.
+        :return:
+        """
+        new_data = []
+        for d in data:
+            temp = {
+                'lable': profession_to_id[d['p']],
+                'original_text': d['text'],
+                'text': d['hard_text'],
+                'text_without_gender': d['text_without_gender'],
+                'tokenized_text': tokenizer.tokenize(d['hard_text']), # this is a split by space tokenizer.
+                'gender': gender_to_id[d['g']]
+            }
+            new_data.append(temp)
+
+        return new_data
+
+    def collate(self, batch):
+        labels, text, gender = zip(*batch)
+        if self.is_regression:
+            labels = torch.FloatTensor(labels)
+        else:
+            labels = torch.LongTensor(labels)
+        lengths = torch.LongTensor([len(x) for x in text])
+        text = nn.utils.rnn.pad_sequence(text, padding_value=self.pad_idx)
+        gender = torch.LongTensor(gender)
+
+        return labels, text, lengths, gender
+
+
+    def run(self):
+
+        assert self.is_regression == False
+
+
+        train = self.read_data("../data/bias_in_bios/train.pickle")
+        dev = self.read_data("../data/bias_in_bios/dev.pickle")
+        test = self.read_data("../data/bias_in_bios/test.pickle")
+
+        # Find all professional. Create a professional to id list
+        all_profession = list(set([t['p'] for t in train]))
+        profession_to_id = {profession:index for index, profession in enumerate(all_profession)}
+        pickle.dump(profession_to_id, open(self.data_dir / Path('profession_to_id.pickle'), "wb"))
+
+        # Find all genders and assign them id
+        all_gender = list(set([t['g'] for t in train]))
+        gender_to_id = {profession:index for index, profession in enumerate(all_gender)}
+        pickle.dump(gender_to_id, open(self.data_dir / Path('gender_to_id.pickle'), "wb"))
+
+        # Tokenization and id'fying the profession
+        train_processed = self.transform_dataframe_to_dict(data=train, tokenizer=self.tokenizer,
+                                                           profession_to_id=profession_to_id, gender_to_id=gender_to_id)
+        dev_processed = self.transform_dataframe_to_dict(data=dev, tokenizer=self.tokenizer,
+                                                         profession_to_id=profession_to_id, gender_to_id=gender_to_id)
+        test_processed = self.transform_dataframe_to_dict(data=test, tokenizer=self.tokenizer,
+                                                          profession_to_id=profession_to_id, gender_to_id=gender_to_id)
 
         number_of_labels = len(all_profession)
 
