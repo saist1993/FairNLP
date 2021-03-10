@@ -99,7 +99,7 @@ def evaluate_adv(model, iterator, criterion, device, accuracy_calculation_functi
     model.eval()
     loss_aux_scale = other_params["loss_aux_scale"]
 
-    with torch.no_grad:
+    with torch.no_grad():
         for labels, text, lengths, aux in tqdm(iterator):
             labels = labels.to(device)
             text = text.to(device)
