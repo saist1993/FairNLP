@@ -29,6 +29,7 @@ from utils import clean_text as clean_text_function
 from models import BiLSTM, initialize_parameters, BiLSTMAdv
 from utils import clean_text_tweet as clean_text_function_tweet
 
+import bias_in_bios_analysis
 
 def calculate_accuracy_classification(predictions, labels):
     top_predictions = predictions.argmax(1, keepdim = True)
@@ -121,6 +122,7 @@ def get_pretrained_embedding(initial_embedding, pretrained_vectors, vocab, devic
 @click.option('-adv_loss_scale', '--adv_loss_scale', type=float, default=0.5, help="sets the adverserial scale (lambda)")
 @click.option('-use_pretrained_emb', '--use_pretrained_emb', type=bool, default=True, help="uses pretrianed if true else random")
 @click.option('-default_emb_dim', '--default_emb_dim', type=int, default=100, help="uses pretrianed if true else random")
+@click.option('-save_test_pred', '--save_test_pred', type=bool, default=False, help="has very specific use case: only works with adv_bias_in_bios")
 
 def main(emb_dim:int,
          spacy_model:str,
@@ -142,7 +144,8 @@ def main(emb_dim:int,
          is_adv:bool,
          adv_loss_scale:float,
          use_pretrained_emb:bool,
-         default_emb_dim:int):
+         default_emb_dim:int,
+         save_test_pred:bool):
 
     print(f"seed is {seed}")
     torch.manual_seed(seed)
@@ -264,6 +267,24 @@ def main(emb_dim:int,
     )
 
     print(f"BEST Test Acc: {best_test_acc} || Actual Test Acc: {test_acc_at_best_valid_acc} || Best Valid Acc {best_valid_acc}")
+
+    if save_test_pred:
+        print("running experiments over test pred: Only valid in specific conditions")
+        model = BiLSTMAdv(model_params)
+        model.load_state_dict(torch.load(model_save_name, map_location=torch.device(device)))
+
+        test_data = pickle.load(open("../data/bias_in_bios/test.pickle", "rb"))
+        id_to_profession = pickle.load(open("../data/bias_in_bios/profession_to_id.pickle","rb"))
+
+        bias_in_bios_analysis.generate_predictions(
+            model=model,
+            data=test_data,
+            id_to_profession=id_to_profession,
+            tokenizer=tokenizer,
+            vocab=vocab,
+            device=device,
+            save_data_at=model_save_name+ '_test_pred.pkl'
+        )
 
 
 if __name__ == '__main__':
