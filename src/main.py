@@ -1,6 +1,7 @@
 # This file will replicate main.py but without torch.text experimental functionality.
 # Secondary objective is to be as abstract and organized as possible
 
+# python main.py -data bias_in_bios -is_regression False -clean_text True -tokenizer simple -use_pretrained_emb True -is_adv True -adv_loss_scale 0.5 -bs 1024 -embeddings ../../../storage/twitter_emb_200/simple_glove_vectors.vec
 # Torch related imports
 import torch
 import torchtext
@@ -213,8 +214,7 @@ def main(emb_dim:int,
     else:
         raise CustomError("No such model found")
 
-    print("model initialized")
-    model = model.to(device)
+
 
     if use_pretrained_emb:
         print("updating embeddings")
@@ -228,6 +228,9 @@ def main(emb_dim:int,
 
     if not learnable_embeddings:
         model.embedding.weight.requires_grad = False
+
+    print("model initialized")
+    model = model.to(device)
 
     # setting up optimizer
     optimizer = optim.Adam(model.parameters([param for param in model.parameters() if param.requires_grad == True]))
