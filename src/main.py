@@ -271,7 +271,7 @@ def main(emb_dim:int,
     if save_test_pred:
         print("running experiments over test pred: Only valid in specific conditions")
         model = BiLSTMAdv(model_params)
-        model.load_state_dict(torch.load(model_save_name, map_location=torch.device(device)))
+        model.load_state_dict(torch.load(model_save_name))
 
         test_data = pickle.load(open("../data/bias_in_bios/test.pickle", "rb"))
         id_to_profession = pickle.load(open("../data/bias_in_bios/profession_to_id.pickle","rb"))
