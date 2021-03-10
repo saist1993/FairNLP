@@ -458,6 +458,7 @@ class BiasinBiosSimpleAdv(WikiSimpleClassification):
         gender_to_id = {profession:index for index, profession in enumerate(all_gender)}
         pickle.dump(gender_to_id, open(self.data_dir / Path('gender_to_id.pickle'), "wb"))
 
+
         # Tokenization and id'fying the profession
         train_processed = self.transform_dataframe_to_dict(data=train, tokenizer=self.tokenizer,
                                                            profession_to_id=profession_to_id, gender_to_id=gender_to_id)

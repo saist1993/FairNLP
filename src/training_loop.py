@@ -132,7 +132,7 @@ def basic_training_loop(
         accuracy_calculation_function,
         other_params = {'is_adv': False}
 ):
-    best_valid_loss = -1*float('inf')
+    best_valid_loss = 1*float('inf')
     best_valid_acc = -1*float('inf')
     best_test_acc = -1*float('inf')
     test_acc_at_best_valid_acc = -1*float('inf')
