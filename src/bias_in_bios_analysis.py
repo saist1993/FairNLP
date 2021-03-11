@@ -22,7 +22,7 @@ from models import BiLSTM, BiLSTMAdv
 def predict(tokenizer, vocab, model, device, sentence):
     model.eval()
     tokens = tokenizer.tokenize(sentence)
-    length = torch.LongTensor([len(tokens)]).to(device)
+    length = torch.LongTensor([len(tokens)]) # length is on CPU
     indexes = [vocab.stoi[token] for token in tokens]
     tensor = torch.LongTensor(indexes).unsqueeze(-1).to(device)
     prediction = model(tensor, length)[0]
@@ -125,7 +125,7 @@ if __name__ == '__main__':
     torch.backends.cudnn.benchmark = False
     nlp = spacy.load("en_core_web_sm")
     device = resolve_device()
-
+    print(f"current device is {device}")
 
     model_path = '../../../storage/model_toxic/bilstm_adv.pt' # '../toxic_models/bilstm_adv.pt'
     vocab_path = '../../../storage/model_toxic/bilstm_adv.pt_vocab.pkl'
