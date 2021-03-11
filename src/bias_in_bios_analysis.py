@@ -185,6 +185,7 @@ if __name__ == '__main__':
 
     model = BiLSTMAdv(model_params)
     model.load_state_dict(torch.load(model_path, map_location=torch.device(device)))
+    model = model.to(device=device)
 
     if number_of_labels == 1:
         criterion = nn.MSELoss()
