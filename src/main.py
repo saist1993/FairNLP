@@ -275,7 +275,8 @@ def main(emb_dim:int,
         model = model.to(device)
 
         test_data = pickle.load(open("../data/bias_in_bios/test.pickle", "rb"))
-        id_to_profession = pickle.load(open("../data/bias_in_bios/profession_to_id.pickle","rb"))
+        profession_to_id = pickle.load(open("../data/bias_in_bios/profession_to_id.pickle","rb"))
+        id_to_profession = {id:prof for prof, id in profession_to_id.keys()}
 
         bias_in_bios_analysis.generate_predictions(
             model=model,
