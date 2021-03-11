@@ -146,7 +146,7 @@ if __name__ == '__main__':
     batch_size = 512
 
     # model params
-    emb_dim = 300
+    emb_dim = 100
     is_adv = True
 
     tokenizer = init_tokenizer(tokenizer=tokenizer,
