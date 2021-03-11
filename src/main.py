@@ -270,7 +270,10 @@ def main(emb_dim:int,
 
     if save_test_pred:
         print("running experiments over test pred: Only valid in specific conditions")
-        model = BiLSTMAdv(model_params)
+        if is_adv:
+            model = BiLSTMAdv(model_params)
+        else:
+            model = BiLSTM(model_params)
         model.load_state_dict(torch.load(model_save_name))
         model = model.to(device)
 
