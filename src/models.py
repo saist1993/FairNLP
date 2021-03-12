@@ -174,7 +174,7 @@ class BOWClassifier(nn.Module):
 
         embedded = torch.stack([torch.mean(t[:length, :],0) for t, length in zip(embedded.transpose(1, 0), lengths)])
         prediction = torch.relu(self.dropout(self.fc1(embedded)))
-        prediction = torch.sigmoid(self.fc2(prediction))
+        prediction = self.fc2(prediction)
         return prediction
 
 

@@ -13,6 +13,7 @@ def train(model, iterator, optimizer, criterion, device, accuracy_calculation_fu
     epoch_acc = 0
 
     model.train()
+    is_regression = other_params['is_regression']
 
     for labels, text, lengths in tqdm(iterator):
         labels = labels.to(device)
@@ -22,8 +23,11 @@ def train(model, iterator, optimizer, criterion, device, accuracy_calculation_fu
 
         predictions = model(text, lengths)
 
-        # loss = criterion(predictions, labels)
-        loss = criterion(predictions.squeeze(), labels.squeeze())
+        if is_regression:
+            loss = criterion(predictions.squeeze(), labels.squeeze())
+        else:
+            loss = criterion(predictions, labels)
+
 
         acc = accuracy_calculation_function(predictions, labels)
 
@@ -40,6 +44,7 @@ def evaluate(model, iterator, criterion, device, accuracy_calculation_function, 
     epoch_loss = 0
     epoch_acc = 0
 
+    is_regression = other_params['is_regression']
     model.eval()
 
     with torch.no_grad():
@@ -50,7 +55,10 @@ def evaluate(model, iterator, criterion, device, accuracy_calculation_function, 
             predictions = model(text, lengths)
 
             # loss = criterion(predictions, labels)
-            loss = criterion(predictions.squeeze(), labels.squeeze())
+            if is_regression:
+                loss = criterion(predictions.squeeze(), labels.squeeze())
+            else:
+                loss = criterion(predictions, labels)
 
             acc = accuracy_calculation_function(predictions, labels)
 
@@ -139,6 +147,8 @@ def basic_training_loop(
     test_acc_at_best_valid_acc = -1*float('inf')
     best_valid_acc_epoch = 0
     is_adv = other_params['is_adv']
+
+    print(f"is adv: {is_adv}")
 
     for epoch in range(n_epochs):
 
