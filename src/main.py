@@ -264,7 +264,8 @@ def main(emb_dim:int,
 
     other_params = {
         'is_adv': is_adv,
-        'loss_aux_scale': adv_loss_scale
+        'loss_aux_scale': adv_loss_scale,
+        'is_regression': regression
     }
 
     best_test_acc, best_valid_acc, test_acc_at_best_valid_acc = basic_training_loop(
