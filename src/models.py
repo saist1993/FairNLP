@@ -148,6 +148,37 @@ class BiLSTMAdv(nn.Module):
         return prediction, adv_output
 
 
+
+class BOWClassifier(nn.Module):
+    def __init__(self, model_params):
+        super().__init__()
+        input_dim = model_params['input_dim']
+        emb_dim = model_params['emb_dim']
+        output_dim = model_params['output_dim']
+        pad_idx = model_params['pad_idx']
+        dropout = model_params['dropout']
+        hidden_dim = model_params['hidden_dim']
+        self.device = model_params['device']
+
+
+
+        self.embedding = nn.Embedding(input_dim, emb_dim, padding_idx=pad_idx)
+        self.fc1 = nn.Linear(emb_dim, hidden_dim)
+        self.fc2 = nn.Linear(hidden_dim, output_dim)
+        self.dropout = nn.Dropout(dropout)
+
+    def forward(self, text, lengths):
+
+        embedded = self.embedding(text)
+        # a = [t[:length,:] for t, length in zip(embedded.transpose(1,0),lengths)]
+
+        embedded = torch.stack([torch.mean(t[:length, :],0) for t, length in zip(embedded.transpose(1, 0), lengths)])
+        prediction = torch.relu(self.dropout(self.fc1(embedded)))
+        prediction = torch.sigmoid(self.fc2(prediction))
+        return prediction
+
+
+
 def initialize_parameters(m):
     if isinstance(m, nn.Embedding):
         nn.init.uniform_(m.weight, -0.05, 0.05)
