@@ -146,7 +146,7 @@ if __name__ == '__main__':
     batch_size = 512
 
     # model params
-    emb_dim = 100
+    emb_dim = 300
     is_adv = True
 
     tokenizer = init_tokenizer(tokenizer=tokenizer,
@@ -200,4 +200,4 @@ if __name__ == '__main__':
                          tokenizer=tokenizer,
                          vocab=vocab,
                          device=device,
-                         save_data_at='../toxic_models/bilstm_adv.pt.test_pred.pkl')
+                         save_data_at='../../../storage/fair_models/conceptor_gender_adv.pt.test_pred.pkl')

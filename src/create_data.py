@@ -104,6 +104,7 @@ class WikiSimpleClassification:
         else:
             labels = torch.LongTensor(labels)
         lengths = torch.LongTensor([len(x) for x in text])
+
         text = nn.utils.rnn.pad_sequence(text, padding_value=self.pad_idx)
 
         return labels, text, lengths

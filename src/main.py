@@ -26,8 +26,8 @@ from config import BILSTM_PARAMS
 from utils import resolve_device, CustomError
 from training_loop import basic_training_loop
 from utils import clean_text as clean_text_function
-from models import BiLSTM, initialize_parameters, BiLSTMAdv
 from utils import clean_text_tweet as clean_text_function_tweet
+from models import BiLSTM, initialize_parameters, BiLSTMAdv, BOWClassifier
 
 import bias_in_bios_analysis
 
@@ -214,6 +214,21 @@ def main(emb_dim:int,
         else:
             model = BiLSTM(model_params)
             model.apply(initialize_parameters)
+    elif model == 'bow':
+        model_params = {
+            'input_dim': input_dim,
+            'emb_dim': emb_dim,
+            'hidden_dim': BILSTM_PARAMS['hidden_dim'],
+            'output_dim': output_dim,
+            'n_layers': BILSTM_PARAMS['n_layers'],
+            'dropout': BILSTM_PARAMS['dropout'],
+            'pad_idx': vocab['pad_token'],
+            'adv_number_of_layers': BILSTM_PARAMS['adv_number_of_layers'],
+            'adv_dropout': BILSTM_PARAMS['adv_dropout'],
+            'device': device
+        }
+        model = BOWClassifier(model_params)
+        model.apply(initialize_parameters)
     else:
         raise CustomError("No such model found")
 
@@ -236,7 +251,7 @@ def main(emb_dim:int,
     model = model.to(device)
 
     # setting up optimizer
-    optimizer = optim.Adam(model.parameters([param for param in model.parameters() if param.requires_grad == True]))
+    optimizer = optim.Adam(model.parameters([param for param in model.parameters() if param.requires_grad == True]), lr=0.1)
 
     # setting up loss function
     if number_of_labels == 1:
