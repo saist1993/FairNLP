@@ -251,7 +251,7 @@ def main(emb_dim:int,
     model = model.to(device)
 
     # setting up optimizer
-    optimizer = optim.Adam(model.parameters([param for param in model.parameters() if param.requires_grad == True]), lr=0.1)
+    optimizer = optim.Adam(model.parameters([param for param in model.parameters() if param.requires_grad == True]), lr=0.01)
 
     # setting up loss function
     if number_of_labels == 1:
