@@ -138,6 +138,10 @@ def resolve_device(device = None) -> torch.device:
     return device
 
 
+def laplace(epsilon, L1_norm):
+    b = L1_norm / epsilon
+    return b
+
 import torch
 from torchtext.data.utils import ngrams_iterator
 

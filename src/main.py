@@ -76,7 +76,6 @@ def generate_data_iterator(dataset_name:str, **kwargs):
             dataset_creator = create_data.BiasinBiosSimple(dataset_name=dataset_name, **kwargs)
             vocab, number_of_labels, train_iterator, dev_iterator, test_iterator = dataset_creator.run()
             return vocab, number_of_labels, train_iterator, dev_iterator, test_iterator
-
     else:
         raise CustomError("No such dataset")
 
@@ -123,6 +122,8 @@ def get_pretrained_embedding(initial_embedding, pretrained_vectors, vocab, devic
 @click.option('-use_pretrained_emb', '--use_pretrained_emb', type=bool, default=True, help="uses pretrianed if true else random")
 @click.option('-default_emb_dim', '--default_emb_dim', type=int, default=100, help="uses pretrianed if true else random")
 @click.option('-save_test_pred', '--save_test_pred', type=bool, default=False, help="has very specific use case: only works with adv_bias_in_bios")
+@click.option('-noise_layer', '--noise_layer', type=bool, default=False, help="used for diff privacy. For now, not implemented")
+@click.option('-eps', '--eps', type=float, default=1.0, help="privacy budget")
 
 def main(emb_dim:int,
          spacy_model:str,
@@ -145,7 +146,9 @@ def main(emb_dim:int,
          adv_loss_scale:float,
          use_pretrained_emb:bool,
          default_emb_dim:int,
-         save_test_pred:bool):
+         save_test_pred:bool,
+         noise_layer:bool,
+         eps:float):
 
     print(f"seed is {seed}")
     torch.manual_seed(seed)
@@ -206,7 +209,9 @@ def main(emb_dim:int,
             'pad_idx': vocab['pad_token'],
             'adv_number_of_layers' : BILSTM_PARAMS['adv_number_of_layers'],
             'adv_dropout' : BILSTM_PARAMS['adv_dropout'],
-            'device': device
+            'device': device,
+            'noise_layer': noise_layer,
+            'eps': eps
         }
         if is_adv:
             model = BiLSTMAdv(model_params)

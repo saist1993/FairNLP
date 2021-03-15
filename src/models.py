@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as func
 
-from utils import GradReverse
+from utils import GradReverse, laplace
 
 
 class BiLSTM(nn.Module):
@@ -97,6 +97,8 @@ class BiLSTMAdv(nn.Module):
         adv_number_of_layers = model_params['adv_number_of_layers']
         adv_dropout = model_params['adv_dropout']
         self.device = model_params['device']
+        self.noise_layer = model_params['noise_layer']
+        self.eps = model_params['eps']
 
         self.embedding = nn.Embedding(input_dim, emb_dim, padding_idx=pad_idx)
         self.lstm = nn.LSTM(emb_dim, hid_dim, num_layers=n_layers, bidirectional=True, dropout=dropout)
@@ -134,11 +136,22 @@ class BiLSTMAdv(nn.Module):
 
         hidden = torch.cat((hidden_fwd, hidden_bck), dim=1)
 
+
+
         # insert domain adversarial stuff here.
 
         # hidden = [batch size, hid dim * 2]
 
         adv_output = self.adv(GradReverse.apply(hidden))
+
+        if self.noise_layer:
+            m = torch.distributions.laplace.Laplace(torch.tensor([0.0]), torch.tensor([laplace(self.eps, 1)]))
+            max_hidden = torch.max(hidden, 1, keepdims=True)[0]
+            min_hidden = torch.max(hidden, 1, keepdims=True)[0]
+            hidden = (hidden - min_hidden)/ (max_hidden - min_hidden)
+            hidden = hidden + m.sample(hidden.shape).squeeze()
+
+
 
         prediction = self.fc(self.dropout(hidden))
 
