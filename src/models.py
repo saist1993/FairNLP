@@ -145,7 +145,7 @@ class BiLSTMAdv(nn.Module):
 
 
         if self.noise_layer:
-            m = torch.distributions.laplace.Laplace(torch.tensor([0.0]), torch.tensor([laplace(self.eps, 2)]))
+            m = torch.distributions.laplace.Laplace(torch.tensor([0.0]), torch.tensor([laplace(self.eps, 1)]))
             # max_hidden = torch.max(hidden, 1, keepdims=True)[0]
             # min_hidden = torch.min(hidden, 1, keepdims=True)[0]
             # hidden = (hidden - min_hidden)/ (max_hidden - min_hidden)
@@ -153,6 +153,7 @@ class BiLSTMAdv(nn.Module):
             hidden = hidden + m.sample(hidden.shape).squeeze().to(self.device)
 
 
+        # hidden = hidden/torch.norm(hidden, keepdim=True)
 
         prediction = self.fc(self.dropout(hidden))
         adv_output = self.adv(GradReverse.apply(hidden))
