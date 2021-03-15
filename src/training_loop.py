@@ -73,7 +73,7 @@ def train_adv(model, iterator, optimizer, criterion, device, accuracy_calculatio
     epoch_acc = 0
     model.train()
     loss_aux_scale = other_params["loss_aux_scale"]
-
+    is_regression = other_params['is_regression']
 
     for labels, text, lengths, aux in tqdm(iterator):
         labels = labels.to(device)
@@ -85,8 +85,15 @@ def train_adv(model, iterator, optimizer, criterion, device, accuracy_calculatio
         predictions, aux_predictions = model(text, lengths)
 
         # loss = criterion(predictions, labels)
-        loss_main = criterion(predictions.squeeze(), labels.squeeze())
-        loss_aux = criterion(aux_predictions.squeeze(), aux.squeeze())
+
+        if is_regression:
+            loss_main = criterion(predictions.squeeze(), labels.squeeze())
+            loss_aux = criterion(aux_predictions.squeeze(), aux.squeeze())
+        else:
+            loss_main = criterion(predictions, labels)
+            loss_aux = criterion(aux_predictions, aux)
+
+
         loss = loss_main + (loss_aux_scale*loss_aux)
 
         acc = accuracy_calculation_function(predictions, labels)
@@ -106,6 +113,7 @@ def evaluate_adv(model, iterator, criterion, device, accuracy_calculation_functi
     epoch_acc = 0
     model.eval()
     loss_aux_scale = other_params["loss_aux_scale"]
+    is_regression = other_params['is_regression']
     all_predictions = []
 
     with torch.no_grad():
@@ -116,9 +124,13 @@ def evaluate_adv(model, iterator, criterion, device, accuracy_calculation_functi
 
             predictions, aux_predictions = model(text, lengths)
 
-            # loss = criterion(predictions, labels)
-            loss_main = criterion(predictions.squeeze(), labels.squeeze())
-            loss_aux = criterion(aux_predictions.squeeze(), aux.squeeze())
+            if is_regression:
+                loss_main = criterion(predictions.squeeze(), labels.squeeze())
+                loss_aux = criterion(aux_predictions.squeeze(), aux.squeeze())
+            else:
+                loss_main = criterion(predictions, labels)
+                loss_aux = criterion(aux_predictions, aux)
+
             loss = loss_main + (loss_aux_scale * loss_aux)
             # all_predictions.append(aux_predictions.squeeze(),labels, aux.squeeze(), )
             acc = accuracy_calculation_function(predictions, labels)
