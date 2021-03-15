@@ -1,42 +1,47 @@
-import torch
-import torch.nn as nn
 
-import torch.optim as optim
-
-import torchtext
-import torchtext.experimental
-import torchtext.experimental.vectors
-from torchtext.experimental.datasets.raw.text_classification import RawTextIterableDataset
-from torchtext.experimental.datasets.text_classification import TextClassificationDataset
-from torchtext.experimental.functional import sequential_transforms, vocab_func, totensor
-
-import collections
-import random
-import time
-
-import pandas as pd
-
-from pathlib import Path
 
 import spacy
-import re
+import random
+import pickle
 
-from functools import partial
-from tqdm.notebook import tqdm
-
-import gensim
-
-
-from main import *
-from utils import *
+# from main import *
 from models import *
+from utils import clean_text as clean_text_function
 
-
-import static_db
-from sklearn.metrics import roc_auc_score, auc
 
 
 import numpy as np
+
+
+import torch
+import torchtext
+import torch.nn as nn
+import torch.optim as optim
+
+
+import click
+import scipy
+import random
+import gensim
+import pickle
+from pathlib import Path
+from tqdm.auto import tqdm
+from typing import Optional, Callable, List
+
+
+# custom imports
+import create_data
+import tokenizer_wrapper
+from config import BILSTM_PARAMS
+from utils import resolve_device, CustomError
+from training_loop import basic_training_loop
+from utils import clean_text as clean_text_function
+from utils import clean_text_tweet as clean_text_function_tweet
+from models import BiLSTM, initialize_parameters, BiLSTMAdv, BOWClassifier
+
+# import bias_in_bios_analysis
+
+
 
 from texttable import Texttable
 from string import Template
@@ -56,31 +61,31 @@ device = 'cpu'
 # read the csv files and do a process over it
 
 from pathlib import Path
+#
+# file = Path("../data/wiki/wiki_debias_train.pkl")
+#
+# if file.exists():
+#     debias_train_raw = pickle.load(open('../data/wiki/wiki_debias_train.pkl', 'rb'))
+#     debias_dev_raw = pickle.load(open('../data/wiki/wiki_debias_dev.pkl', 'rb'))
+#     debias_test_raw = pickle.load(open('../data/wiki/wiki_debias_test.pkl', 'rb'))
+# else:
+#     debias_train = Path('../data/wiki/wiki_debias_train.csv')
+#     debias_dev = Path('../data/wiki/wiki_debias_dev.csv')
+#     debias_test = Path('../data/wiki/wiki_debias_test.csv')
+#
+#     # Optimize this later. We don't need pandas dataframe
+#     debias_train_raw = transform_dataframe_to_dict(data_frame=pd.read_csv(debias_train), tokenizer=tokenizer)
+#     debias_dev_raw = transform_dataframe_to_dict(data_frame=pd.read_csv(debias_dev), tokenizer=tokenizer)
+#     debias_test_raw = transform_dataframe_to_dict(data_frame=pd.read_csv(debias_test), tokenizer=tokenizer)
+#
+#     import pickle
+#
+#     pickle.dump(debias_train_raw, open('../data/wiki/wiki_debias_train.pkl', 'wb'))
+#     pickle.dump(debias_dev_raw, open('../data/wiki/wiki_debias_dev.pkl', 'wb'))
+#     pickle.dump(debias_test_raw, open('../data/wiki/wiki_debias_test.pkl', 'wb'))
 
-file = Path("../data/wiki/wiki_debias_train.pkl")
 
-if file.exists():
-    debias_train_raw = pickle.load(open('../data/wiki/wiki_debias_train.pkl', 'rb'))
-    debias_dev_raw = pickle.load(open('../data/wiki/wiki_debias_dev.pkl', 'rb'))
-    debias_test_raw = pickle.load(open('../data/wiki/wiki_debias_test.pkl', 'rb'))
-else:
-    debias_train = Path('../data/wiki/wiki_debias_train.csv')
-    debias_dev = Path('../data/wiki/wiki_debias_dev.csv')
-    debias_test = Path('../data/wiki/wiki_debias_test.csv')
-
-    # Optimize this later. We don't need pandas dataframe
-    debias_train_raw = transform_dataframe_to_dict(data_frame=pd.read_csv(debias_train), tokenizer=tokenizer)
-    debias_dev_raw = transform_dataframe_to_dict(data_frame=pd.read_csv(debias_dev), tokenizer=tokenizer)
-    debias_test_raw = transform_dataframe_to_dict(data_frame=pd.read_csv(debias_test), tokenizer=tokenizer)
-
-    import pickle
-
-    pickle.dump(debias_train_raw, open('../data/wiki/wiki_debias_train.pkl', 'wb'))
-    pickle.dump(debias_dev_raw, open('../data/wiki/wiki_debias_dev.pkl', 'wb'))
-    pickle.dump(debias_test_raw, open('../data/wiki/wiki_debias_test.pkl', 'wb'))
-
-
-tokenizer = Tokenizer(spacy_model="en_core_web_sm", clean_text=clean_text, max_length=None)
+tokenizer = tokenizer_wrapper.SpacyTokenizer(spacy_model="en_core_web_sm", clean_text=clean_text_function, max_length=None)
 
 sentence_templates = [
     (Template("You are $identity."), False),
@@ -104,20 +109,40 @@ def predict_sentiment(tokenizer, vocab, model, device, sentence):
     pos_probability = probabilities.squeeze()[-1].item()
     return pos_probability
 
+#
+# models_path = ['../models/toxic_simple_glove']
+# vocabs_path = [i+'vocab.pkl' for i in models_path]
 
-models_path = ['../models/toxic_simple_glove']
-vocabs_path = [i+'vocab.pkl' for i in models_path]
+#
+# models_path = ['../models/toxic_simple_glove', '../toxic_models/toxic_conceptor_gender',
+#                 '../toxic_models/toxic_conceptor_race', '../toxic_models/toxic_conceptor_gender_race',
+#                 '../toxic_models/toxic_null_space_gender', '../toxic_models/toxic_null_space_race']
 
 
-models_path = ['../models/toxic_simple_glove', '../toxic_models/toxic_conceptor_gender',
-                '../toxic_models/toxic_conceptor_race', '../toxic_models/toxic_conceptor_gender_race',
-                '../toxic_models/toxic_null_space_gender', '../toxic_models/toxic_null_space_race']
-vocabs_path = [i+'vocab.pkl' for i in models_path]
+# models_path = [ '../toxic_model_2/model_toxic_second/simple_glove_bilstm.pt',
+#                '../toxic_model_2/model_toxic_second/conceptor_gender_bilstm.pt',
+#                '../toxic_model_2/model_toxic_second/conceptor_race__bilstm.pt',
+#                '../toxic_model_2/model_toxic_second/conceptor_gender_race_bilstm.pt',
+#                 '../toxic_model_2/model_toxic_second/null_space_gender_bilstm.pt',
+#                '../toxic_model_2/model_toxic_second/null_space_race_bilstm.pt',
+#                '../toxic_model_2/model_toxic_second/null_space_gender_race_bilstm.pt'
+#                ]
+
+
+models_path = [ '../toxic_model_2/model_toxic_second/simple_glove_bow.pt',
+               '../toxic_model_2/model_toxic_second/conceptor_gender_bow.pt',
+               '../toxic_model_2/model_toxic_second/conceptor_race_bow.pt',
+               '../toxic_model_2/model_toxic_second/conceptor_gender_race_bow.pt',
+                '../toxic_model_2/model_toxic_second/null_space_gender_bow.pt',
+               '../toxic_model_2/model_toxic_second/null_space_race_bow.pt',
+               '../toxic_model_2/model_toxic_second/null_space_gender_race_bow.pt'
+               ]
+vocabs_path = [i+'_vocab.pkl' for i in models_path]
 
 european_american = ['white',  'european american']
 african_american = ['black',  'african american']
 male = ['male', 'man', 'men', 'guy', 'gentleman']
-female = ['female', 'woman', 'women', 'gal', 'gentlewoman']
+female = ['female', 'woman', 'women', 'gal', 'lady']
 adjs = ['calm', 'bored']
 adjs = ['']
 ea_m = [" ".join([i,j, adj]) for i in european_american for j in male for adj in adjs]
@@ -170,40 +195,62 @@ def avg_score_diff(identity1, identity2, sentence_templates, string_to_print):
 
 for model_path, vocab_path in zip(models_path, vocabs_path):
     vocab = pickle.load(open(vocab_path, 'rb'))
-    train_data = process_data(raw_data=debias_train_raw, vocab=vocab)
-    dev_data = process_data(raw_data=debias_dev_raw, vocab=vocab)
-    test_data = process_data(raw_data=debias_test_raw, vocab=vocab)
-
-    pad_token = DEFAULT_PARAMS['pad_token']
-    pad_idx = vocab[pad_token]
-
-    collator = Collator(pad_idx)
-
-    batch_size = 256
-
-    train_iterator = torch.utils.data.DataLoader(train_data,
-                                                 batch_size,
-                                                 shuffle=True,
-                                                 collate_fn=collator.collate)
-
-    dev_iterator = torch.utils.data.DataLoader(dev_data,
-                                               batch_size,
-                                               shuffle=False,
-                                               collate_fn=collator.collate)
-
-    test_iterator = torch.utils.data.DataLoader(test_data,
-                                                batch_size,
-                                                shuffle=False,
-                                                collate_fn=collator.collate)
+    # train_data = process_data(raw_data=debias_train_raw, vocab=vocab)
+    # dev_data = process_data(raw_data=debias_dev_raw, vocab=vocab)
+    # test_data = process_data(raw_data=debias_test_raw, vocab=vocab)
+    if "bilstm" in model_path:
+        model = 'bilstm'
+    else:
+        model = 'bow'
 
     input_dim = len(vocab)
-    emb_dim = BILSTM_PARAMS['emb_dim']
-    hid_dim = BILSTM_PARAMS['hid_dim']
-    output_dim = BILSTM_PARAMS['output_dim']
-    n_layers = BILSTM_PARAMS['n_layers']
-    dropout = BILSTM_PARAMS['dropout']
-    model = BiLSTM(input_dim, emb_dim, hid_dim, output_dim, n_layers, dropout, pad_idx)
-    model.apply(initialize_parameters)
+    emb_dim = 300
+    output_dim = 2
+    is_adv = False
+
+    if model == 'bilstm':
+        model_params = {
+            'input_dim': input_dim,
+            'emb_dim': emb_dim,
+            'hidden_dim': BILSTM_PARAMS['hidden_dim'],
+            'output_dim': output_dim,
+            'n_layers': BILSTM_PARAMS['n_layers'],
+            'dropout': BILSTM_PARAMS['dropout'],
+            'pad_idx': vocab['pad_token'],
+            'adv_number_of_layers' : BILSTM_PARAMS['adv_number_of_layers'],
+            'adv_dropout' : BILSTM_PARAMS['adv_dropout'],
+            'device': device,
+            'noise_layer': False
+        }
+        if is_adv:
+            model = BiLSTMAdv(model_params)
+            model.apply(initialize_parameters)
+        else:
+            model = BiLSTM(model_params)
+            model.apply(initialize_parameters)
+    elif model == 'bow':
+        model_params = {
+            'input_dim': input_dim,
+            'emb_dim': emb_dim,
+            'hidden_dim': BILSTM_PARAMS['hidden_dim'],
+            'output_dim': output_dim,
+            'n_layers': BILSTM_PARAMS['n_layers'],
+            'dropout': BILSTM_PARAMS['dropout'],
+            'pad_idx': vocab['pad_token'],
+            'adv_number_of_layers': BILSTM_PARAMS['adv_number_of_layers'],
+            'adv_dropout': BILSTM_PARAMS['adv_dropout'],
+            'device': device
+        }
+        model = BOWClassifier(model_params)
+        model.apply(initialize_parameters)
+    else:
+        raise CustomError("No such model found")
+
+
+    #
+    # pad_token = vocab['pad_token']
+    pad_idx = vocab['pad_token']
+
 
     optimizer = optim.Adam(model.parameters())
     criterion = nn.CrossEntropyLoss()
@@ -235,7 +282,7 @@ for model_path, vocab_path in zip(models_path, vocabs_path):
     print(t.draw())
 
     collect_scores = [str(i[1:][0]) for i in collect_scores]
-    collect_scores.insert(0, model_path[16:])
+    collect_scores.insert(0, model_path[35:])
     final_data.append(collect_scores)
 
 
