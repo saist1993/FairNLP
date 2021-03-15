@@ -142,7 +142,7 @@ class BiLSTMAdv(nn.Module):
 
         # hidden = [batch size, hid dim * 2]
 
-        adv_output = self.adv(GradReverse.apply(hidden))
+
 
         if self.noise_layer:
             m = torch.distributions.laplace.Laplace(torch.tensor([0.0]), torch.tensor([laplace(self.eps, 1)]))
@@ -154,6 +154,7 @@ class BiLSTMAdv(nn.Module):
 
 
         prediction = self.fc(self.dropout(hidden))
+        adv_output = self.adv(GradReverse.apply(hidden))
 
         # prediction = [batch size, output dim]
         #
