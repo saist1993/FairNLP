@@ -11,6 +11,7 @@ import torch.optim as optim
 
 import click
 import scipy
+import wandb
 import random
 import gensim
 import pickle
@@ -126,6 +127,7 @@ def get_pretrained_embedding(initial_embedding, pretrained_vectors, vocab, devic
 @click.option('-eps', '--eps', type=float, default=1.0, help="privacy budget")
 @click.option('-is_post_hoc', '--is_post_hoc', type=bool, default=False, help="trains a post-hoc classifier")
 @click.option('-train_main_model', '--train_main_model', type=bool, default=True, help="If false; only trains post-hoc classifier")
+@click.option('-use_wandb', '--use_wandb', type=bool, default=False, help="make sure the project is configured to use wandb")
 
 def main(emb_dim:int,
          spacy_model:str,
@@ -152,7 +154,13 @@ def main(emb_dim:int,
          noise_layer:bool,
          eps:float,
          is_post_hoc:bool,
-         train_main_model:bool):
+         train_main_model:bool,
+         use_wandb:bool):
+
+    if use_wandb:
+        wandb.init(project='bias_in_nlp', entity='magnet', config = click.get_current_context().params)
+    else:
+        wandb = False
 
     print(f"seed is {seed}")
     torch.manual_seed(seed)
@@ -265,8 +273,11 @@ def main(emb_dim:int,
     # setting up loss function
     if number_of_labels == 1:
         criterion = nn.MSELoss()
+        if use_wandb: wandb.log({'loss': 'MSEloss'})
     else:
         criterion = nn.CrossEntropyLoss()
+        if use_wandb: wandb.log({'loss': 'CrossEntropy'})
+
 
     # Things still left
     accuracy_calculation_function = calculate_accuracy_regression if number_of_labels == 1 else calculate_accuracy_classification
@@ -292,6 +303,7 @@ def main(emb_dim:int,
              device=device,
              model_save_name=model_save_name,
              accuracy_calculation_function = accuracy_calculation_function,
+             wandb=wandb,
              other_params=other_params
         )
 
@@ -338,6 +350,7 @@ def main(emb_dim:int,
              device=device,
              model_save_name=model_save_name + 'post_hoc.pt',
              accuracy_calculation_function = accuracy_calculation_function,
+             wandb=False,
              other_params=other_params
         )
 
