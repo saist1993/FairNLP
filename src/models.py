@@ -203,14 +203,18 @@ class Attacker(nn.Module):
     def __init__(self, model_params, original_model):
         super(Attacker, self).__init__()
         self.original_model = original_model # model forward. This is the palce through which one will get hidden
+
+        for param_group in self.original_model.parameters():
+            param_group.requires_grad = False
+
         hid_dim = model_params['hidden_dim']
         adv_number_of_layers = model_params['adv_number_of_layers']
         adv_dropout = model_params['adv_dropout']
         self.device = model_params['device']
-        self.adv = DomainAdv(number_of_layers=adv_number_of_layers, input_dim=2 * hid_dim,
+        self.adv = DomainAdv(number_of_layers=adv_number_of_layers, input_dim= 2*hid_dim,
                              hidden_dim=hid_dim, output_dim=2, dropout=adv_dropout)
     def forward(self, text, lengths):
-        hidden, _, _ = self.original_model(text, lengths)
+        _, _, hidden = self.original_model(text, lengths)
         output = self.adv(hidden)
         return output
 
