@@ -308,11 +308,12 @@ def main(emb_dim:int,
             model = BiLSTMAdv(model_params)
         else:
             model = BiLSTM(model_params)
-        # model.load_state_dict(torch.load(model_save_name))
+        model.load_state_dict(torch.load(model_save_name))
         model = model.to(device)
 
         # step 2 -> init the post-hoc model
         post_hoc = Attacker(model_params,model)
+        post_hoc = post_hoc.to(device)
         optimizer = optim.Adam(model.parameters([param for param in post_hoc.parameters() if param.requires_grad == True]),
                                lr=0.01)
 
