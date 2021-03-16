@@ -218,7 +218,7 @@ def main(emb_dim:int,
             'output_dim': output_dim,
             'n_layers': BILSTM_PARAMS['n_layers'],
             'dropout': BILSTM_PARAMS['dropout'],
-            'pad_idx': vocab['pad_token'],
+            'pad_idx': vocab[pad_token],
             'adv_number_of_layers' : BILSTM_PARAMS['adv_number_of_layers'],
             'adv_dropout' : BILSTM_PARAMS['adv_dropout'],
             'device': device,
@@ -239,7 +239,7 @@ def main(emb_dim:int,
             'output_dim': output_dim,
             'n_layers': BILSTM_PARAMS['n_layers'],
             'dropout': BILSTM_PARAMS['dropout'],
-            'pad_idx': vocab['pad_token'],
+            'pad_idx': vocab[pad_token],
             'adv_number_of_layers': BILSTM_PARAMS['adv_number_of_layers'],
             'adv_dropout': BILSTM_PARAMS['adv_dropout'],
             'device': device
@@ -289,7 +289,8 @@ def main(emb_dim:int,
             'is_adv': is_adv,
             'loss_aux_scale': adv_loss_scale,
             'is_regression': regression,
-            'is_post_hoc': False # here the post-hoc has to be false
+            'is_post_hoc': False, # here the post-hoc has to be false
+            'save_model': True
         }
 
         best_test_acc, best_valid_acc, test_acc_at_best_valid_acc = basic_training_loop(
@@ -309,10 +310,23 @@ def main(emb_dim:int,
 
         print(f"BEST Test Acc: {best_test_acc} || Actual Test Acc: {test_acc_at_best_valid_acc} || Best Valid Acc {best_valid_acc}")
 
+        if use_wandb:
+            wandb.config.update(
+                {
+                    'best_test_acc': best_test_acc,
+                    'best_valid_acc': best_valid_acc,
+                    'test_acc_at_best_valid_acc': test_acc_at_best_valid_acc
+                }
+            )
+
 
     if is_post_hoc:
         # the post_hoc classifier will be trained.
-        assert is_adv == True
+        # assert is_adv == True
+        if not is_adv:
+            is_adv = True
+            adv_loss_scale = 0.0
+
         model_params['return_hidden'] = True
 
         # step 1 -> load the main model
@@ -336,7 +350,8 @@ def main(emb_dim:int,
             'is_adv': is_adv,
             'loss_aux_scale': adv_loss_scale,
             'is_regression': regression,
-            'is_post_hoc': True # here the post-hoc has to be false
+            'is_post_hoc': True, # here the post-hoc has to be false
+            'save_model': False
         }
 
         best_test_acc, best_valid_acc, test_acc_at_best_valid_acc = basic_training_loop(
