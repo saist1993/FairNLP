@@ -74,6 +74,7 @@ def train_adv(model, iterator, optimizer, criterion, device, accuracy_calculatio
     model.train()
     loss_aux_scale = other_params["loss_aux_scale"]
     is_regression = other_params['is_regression']
+    is_post_hoc = other_params['is_post_hoc']
 
     for labels, text, lengths, aux in tqdm(iterator):
         labels = labels.to(device)
@@ -82,16 +83,28 @@ def train_adv(model, iterator, optimizer, criterion, device, accuracy_calculatio
 
         optimizer.zero_grad()
 
-        predictions, aux_predictions = model(text, lengths)
+
 
         # loss = criterion(predictions, labels)
 
-        if is_regression:
-            loss_main = criterion(predictions.squeeze(), labels.squeeze())
-            loss_aux = criterion(aux_predictions.squeeze(), aux.squeeze())
+        if is_post_hoc:
+            predictions = model(text, lengths)
+            if is_regression:
+                loss_main = criterion(predictions.squeeze(), aux.squeeze())
+                # loss_aux = criterion(aux_predictions.squeeze(), aux.squeeze())
+            else:
+                # loss_main = criterion(predictions, labels)
+                loss_main = criterion(predictions, aux)
+
+            loss_aux = 0.0
         else:
-            loss_main = criterion(predictions, labels)
-            loss_aux = criterion(aux_predictions, aux)
+            predictions, aux_predictions = model(text, lengths)
+            if is_regression:
+                loss_main = criterion(predictions.squeeze(), labels.squeeze())
+                loss_aux = criterion(aux_predictions.squeeze(), aux.squeeze())
+            else:
+                loss_main = criterion(predictions, labels)
+                loss_aux = criterion(aux_predictions, aux)
 
 
         loss = loss_main + (loss_aux_scale*loss_aux)
@@ -114,6 +127,7 @@ def evaluate_adv(model, iterator, criterion, device, accuracy_calculation_functi
     model.eval()
     loss_aux_scale = other_params["loss_aux_scale"]
     is_regression = other_params['is_regression']
+    is_post_hoc = other_params['is_post_hoc']
     all_predictions = []
 
     with torch.no_grad():
@@ -122,14 +136,24 @@ def evaluate_adv(model, iterator, criterion, device, accuracy_calculation_functi
             text = text.to(device)
             aux = aux.to(device)
 
-            predictions, aux_predictions = model(text, lengths)
+            if is_post_hoc:
+                predictions = model(text, lengths)
+                if is_regression:
+                    loss_main = criterion(predictions.squeeze(), aux.squeeze())
+                    # loss_aux = criterion(aux_predictions.squeeze(), aux.squeeze())
+                else:
+                    # loss_main = criterion(predictions, labels)
+                    loss_main = criterion(predictions, aux)
 
-            if is_regression:
-                loss_main = criterion(predictions.squeeze(), labels.squeeze())
-                loss_aux = criterion(aux_predictions.squeeze(), aux.squeeze())
+                loss_aux = 0.0
             else:
-                loss_main = criterion(predictions, labels)
-                loss_aux = criterion(aux_predictions, aux)
+                predictions, aux_predictions = model(text, lengths)
+                if is_regression:
+                    loss_main = criterion(predictions.squeeze(), labels.squeeze())
+                    loss_aux = criterion(aux_predictions.squeeze(), aux.squeeze())
+                else:
+                    loss_main = criterion(predictions, labels)
+                    loss_aux = criterion(aux_predictions, aux)
 
             loss = loss_main + (loss_aux_scale * loss_aux)
             # all_predictions.append(aux_predictions.squeeze(),labels, aux.squeeze(), )
