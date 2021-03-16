@@ -27,7 +27,7 @@ from utils import resolve_device, CustomError
 from training_loop import basic_training_loop
 from utils import clean_text as clean_text_function
 from utils import clean_text_tweet as clean_text_function_tweet
-from models import BiLSTM, initialize_parameters, BiLSTMAdv, BOWClassifier
+from models import BiLSTM, initialize_parameters, BiLSTMAdv, BOWClassifier, Attacker
 
 import bias_in_bios_analysis
 
@@ -296,6 +296,52 @@ def main(emb_dim:int,
         )
 
         print(f"BEST Test Acc: {best_test_acc} || Actual Test Acc: {test_acc_at_best_valid_acc} || Best Valid Acc {best_valid_acc}")
+
+
+    if is_post_hoc:
+        # the post_hoc classifier will be trained.
+        assert is_adv == True
+        model_params['return_hidden'] = True
+
+        # step 1 -> load the main model
+        if is_adv:
+            model = BiLSTMAdv(model_params)
+        else:
+            model = BiLSTM(model_params)
+        # model.load_state_dict(torch.load(model_save_name))
+        model = model.to(device)
+
+        # step 2 -> init the post-hoc model
+        post_hoc = Attacker(model_params,model)
+        optimizer = optim.Adam(model.parameters([param for param in post_hoc.parameters() if param.requires_grad == True]),
+                               lr=0.01)
+
+
+        # step 4 -> train like a normal human
+
+        other_params = {
+            'is_adv': is_adv,
+            'loss_aux_scale': adv_loss_scale,
+            'is_regression': regression,
+            'is_post_hoc': True # here the post-hoc has to be false
+        }
+
+        best_test_acc, best_valid_acc, test_acc_at_best_valid_acc = basic_training_loop(
+             n_epochs=epochs,
+             model=post_hoc,
+             train_iterator=train_iterator,
+             dev_iterator=dev_iterator,
+             test_iterator=test_iterator,
+             optimizer=optimizer,
+             criterion=criterion,
+             device=device,
+             model_save_name=model_save_name + 'post_hoc.pt',
+             accuracy_calculation_function = accuracy_calculation_function,
+             other_params=other_params
+        )
+
+        print(f"BEST Test Acc for post hoc: {best_test_acc} || Actual Test Acc: {test_acc_at_best_valid_acc} || Best Valid Acc {best_valid_acc}")
+
 
     if save_test_pred:
         print("running experiments over test pred: Only valid in specific conditions")
