@@ -356,6 +356,14 @@ def main(emb_dim:int,
 
         print(f"BEST Test Acc for post hoc: {best_test_acc} || Actual Test Acc: {test_acc_at_best_valid_acc} || Best Valid Acc {best_valid_acc}")
 
+        if use_wandb:
+            wandb.config.update(
+                {
+                    'best_test_acc_post_hoc': best_test_acc,
+                    'best_valid_acc_post_hoc': best_valid_acc,
+                    'test_acc_at_best_valid_acc_post_hoc': test_acc_at_best_valid_acc
+                }
+            )
 
     if save_test_pred:
         print("running experiments over test pred: Only valid in specific conditions")
@@ -370,7 +378,7 @@ def main(emb_dim:int,
         profession_to_id = pickle.load(open("../data/bias_in_bios/profession_to_id.pickle","rb"))
         id_to_profession = {id:prof for prof, id in profession_to_id.items()}
 
-        bias_in_bios_analysis.generate_predictions(
+        final_acc, rms, largest_diff_pair = bias_in_bios_analysis.generate_predictions(
             model=model,
             data=test_data,
             id_to_profession=id_to_profession,
@@ -379,6 +387,15 @@ def main(emb_dim:int,
             device=device,
             save_data_at=model_save_name+ '_test_pred.pkl'
         )
+
+        if use_wandb:
+            wandb.config.update(
+                {
+                    'final_acc': final_acc,
+                    'gender rms': rms,
+                    'largest_diff_pair': largest_diff_pair
+                }
+            )
 
 
 if __name__ == '__main__':

@@ -102,6 +102,8 @@ def generate_predictions(model,
     print(calculate_rms(final_acc))
     print(return_larget_diff(final_acc))
 
+    return final_acc, calculate_rms(final_acc), return_larget_diff(final_acc)
+
 
 
 
