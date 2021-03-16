@@ -95,7 +95,7 @@ def train_adv(model, iterator, optimizer, criterion, device, accuracy_calculatio
             else:
                 # loss_main = criterion(predictions, labels)
                 loss_main = criterion(predictions, aux)
-
+            acc = accuracy_calculation_function(predictions, aux)
             loss_aux = 0.0
         else:
             predictions, aux_predictions = model(text, lengths)
@@ -105,11 +105,11 @@ def train_adv(model, iterator, optimizer, criterion, device, accuracy_calculatio
             else:
                 loss_main = criterion(predictions, labels)
                 loss_aux = criterion(aux_predictions, aux)
-
+            acc = accuracy_calculation_function(predictions, labels)
 
         loss = loss_main + (loss_aux_scale*loss_aux)
 
-        acc = accuracy_calculation_function(predictions, labels)
+
 
         loss.backward()
 
@@ -144,7 +144,7 @@ def evaluate_adv(model, iterator, criterion, device, accuracy_calculation_functi
                 else:
                     # loss_main = criterion(predictions, labels)
                     loss_main = criterion(predictions, aux)
-
+                acc = accuracy_calculation_function(predictions, aux)
                 loss_aux = 0.0
             else:
                 predictions, aux_predictions = model(text, lengths)
@@ -154,10 +154,11 @@ def evaluate_adv(model, iterator, criterion, device, accuracy_calculation_functi
                 else:
                     loss_main = criterion(predictions, labels)
                     loss_aux = criterion(aux_predictions, aux)
+                acc = accuracy_calculation_function(predictions, labels)
 
             loss = loss_main + (loss_aux_scale * loss_aux)
             # all_predictions.append(aux_predictions.squeeze(),labels, aux.squeeze(), )
-            acc = accuracy_calculation_function(predictions, labels)
+            # acc = accuracy_calculation_function(predictions, labels)
 
             epoch_loss += loss.item()
             epoch_acc += acc.item()
@@ -175,8 +176,10 @@ def basic_training_loop(
         device,
         model_save_name,
         accuracy_calculation_function,
+        wandb,
         other_params = {'is_adv': False}
 ):
+
     best_valid_loss = 1*float('inf')
     best_valid_acc = -1*float('inf')
     best_test_acc = -1*float('inf')
@@ -221,6 +224,17 @@ def basic_training_loop(
         print(f'Epoch: {epoch + 1:02} | Epoch Time: {epoch_mins}m {epoch_secs}s')
         print(f'\tTrain Loss: {train_loss:.3f} | Train Acc: {train_acc}%')
         print(f'\t Val. Loss: {valid_loss:.3f} |  Val. Acc: {valid_acc}%')
-        print(f'\t Val. Loss: {test_loss:.3f} |  Val. Acc: {test_acc}%')
+        print(f'\t Test Loss: {test_loss:.3f} |  Val. Acc: {test_acc}%')
+
+        if wandb:
+            wandb.log({
+                'train_loss': train_loss,
+                'valid_loss': valid_loss,
+                'test_loss': test_loss,
+                'epoch': epoch,
+                'train_acc': train_acc,
+                'valid_acc': valid_acc,
+                'test_acc': test_acc
+            })
 
     return best_test_acc, best_valid_acc, test_acc_at_best_valid_acc
