@@ -153,7 +153,7 @@ class BiLSTMAdv(nn.Module):
             hidden = hidden + m.sample(hidden.shape).squeeze().to(self.device)
 
 
-        hidden = hidden/torch.norm(hidden, keepdim=True)
+        # hidden = hidden/torch.norm(hidden, keepdim=True)
 
         prediction = self.fc(hidden)
         adv_output = self.adv(GradReverse.apply(hidden))
