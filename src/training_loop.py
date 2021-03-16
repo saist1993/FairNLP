@@ -186,7 +186,7 @@ def basic_training_loop(
     test_acc_at_best_valid_acc = -1*float('inf')
     best_valid_acc_epoch = 0
     is_adv = other_params['is_adv']
-
+    save_model = other_params['save_model']
     print(f"is adv: {is_adv}")
 
     for epoch in range(n_epochs):
@@ -209,10 +209,11 @@ def basic_training_loop(
 
         epoch_mins, epoch_secs = epoch_time(start_time, end_time)
 
-        if valid_loss < best_valid_loss:
-            print(f"model saved as: {model_save_name}")
-            best_valid_loss = valid_loss
-            torch.save(model.state_dict(), model_save_name)
+        if save_model:
+            if valid_loss < best_valid_loss:
+                print(f"model saved as: {model_save_name}")
+                best_valid_loss = valid_loss
+                torch.save(model.state_dict(), model_save_name)
 
         if valid_acc > best_valid_acc:
             best_valid_acc = valid_acc
