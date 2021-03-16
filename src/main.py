@@ -124,6 +124,7 @@ def get_pretrained_embedding(initial_embedding, pretrained_vectors, vocab, devic
 @click.option('-save_test_pred', '--save_test_pred', type=bool, default=False, help="has very specific use case: only works with adv_bias_in_bios")
 @click.option('-noise_layer', '--noise_layer', type=bool, default=False, help="used for diff privacy. For now, not implemented")
 @click.option('-eps', '--eps', type=float, default=1.0, help="privacy budget")
+@click.option('-is_post_hoc', '--is_post_hoc', type=bool, default=False, help="trains a post-hoc classifier")
 
 def main(emb_dim:int,
          spacy_model:str,
@@ -148,7 +149,8 @@ def main(emb_dim:int,
          default_emb_dim:int,
          save_test_pred:bool,
          noise_layer:bool,
-         eps:float):
+         eps:float,
+         is_post_hoc:bool):
 
     print(f"seed is {seed}")
     torch.manual_seed(seed)
@@ -270,7 +272,8 @@ def main(emb_dim:int,
     other_params = {
         'is_adv': is_adv,
         'loss_aux_scale': adv_loss_scale,
-        'is_regression': regression
+        'is_regression': regression,
+        'is_post_hoc': is_post_hoc
     }
 
     best_test_acc, best_valid_acc, test_acc_at_best_valid_acc = basic_training_loop(
