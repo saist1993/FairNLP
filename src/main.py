@@ -11,7 +11,6 @@ import torch.optim as optim
 
 import click
 import scipy
-import wandb
 import random
 import gensim
 import pickle
@@ -158,6 +157,7 @@ def main(emb_dim:int,
          use_wandb:bool):
 
     if use_wandb:
+        import wandb
         wandb.init(project='bias_in_nlp', entity='magnet', config = click.get_current_context().params)
     else:
         wandb = False
