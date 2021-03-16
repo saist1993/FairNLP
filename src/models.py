@@ -99,6 +99,10 @@ class BiLSTMAdv(nn.Module):
         self.device = model_params['device']
         self.noise_layer = model_params['noise_layer']
         self.eps = model_params['eps']
+        try:
+            self.return_hidden = model_params['eps']
+        except KeyError:
+            self.return_hidden = False
 
         self.embedding = nn.Embedding(input_dim, emb_dim, padding_idx=pad_idx)
         self.lstm = nn.LSTM(emb_dim, hid_dim, num_layers=n_layers, bidirectional=True, dropout=dropout)
@@ -153,13 +157,13 @@ class BiLSTMAdv(nn.Module):
             hidden = hidden + m.sample(hidden.shape).squeeze().to(self.device)
 
 
-        # hidden = hidden/torch.norm(hidden, keepdim=True)
+        hidden = hidden/torch.norm(hidden, keepdim=True)
 
         prediction = self.fc(hidden)
         adv_output = self.adv(GradReverse.apply(hidden))
 
-        # prediction = [batch size, output dim]
-        #
+        if self.return_hidden:
+            return prediction, adv_output, hidden
 
         return prediction, adv_output
 
@@ -194,6 +198,21 @@ class BOWClassifier(nn.Module):
         return prediction
 
 
+
+class Attacker(nn.Module):
+    def __init__(self, model_params, original_model):
+        super(Attacker, self).__init__()
+        self.original_model = original_model # model forward. This is the palce through which one will get hidden
+        hid_dim = model_params['hidden_dim']
+        adv_number_of_layers = model_params['adv_number_of_layers']
+        adv_dropout = model_params['adv_dropout']
+        self.device = model_params['device']
+        self.adv = DomainAdv(number_of_layers=adv_number_of_layers, input_dim=2 * hid_dim,
+                             hidden_dim=hid_dim, output_dim=2, dropout=adv_dropout)
+    def forward(self, text, lengths):
+        hidden, _, _ = self.original_model(text, lengths)
+        output = self.adv(hidden)
+        return output
 
 def initialize_parameters(m):
     if isinstance(m, nn.Embedding):
