@@ -100,7 +100,7 @@ class BiLSTMAdv(nn.Module):
         self.noise_layer = model_params['noise_layer']
         self.eps = model_params['eps']
         try:
-            self.return_hidden = model_params['eps']
+            self.return_hidden = model_params['return_hidden']
         except KeyError:
             self.return_hidden = False
 

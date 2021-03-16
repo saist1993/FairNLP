@@ -125,6 +125,7 @@ def get_pretrained_embedding(initial_embedding, pretrained_vectors, vocab, devic
 @click.option('-noise_layer', '--noise_layer', type=bool, default=False, help="used for diff privacy. For now, not implemented")
 @click.option('-eps', '--eps', type=float, default=1.0, help="privacy budget")
 @click.option('-is_post_hoc', '--is_post_hoc', type=bool, default=False, help="trains a post-hoc classifier")
+@click.option('-train_main_model', '--train_main_model', type=bool, default=True, help="If false; only trains post-hoc classifier")
 
 def main(emb_dim:int,
          spacy_model:str,
@@ -150,7 +151,8 @@ def main(emb_dim:int,
          save_test_pred:bool,
          noise_layer:bool,
          eps:float,
-         is_post_hoc:bool):
+         is_post_hoc:bool,
+         train_main_model:bool):
 
     print(f"seed is {seed}")
     torch.manual_seed(seed)
@@ -269,28 +271,31 @@ def main(emb_dim:int,
     # Things still left
     accuracy_calculation_function = calculate_accuracy_regression if number_of_labels == 1 else calculate_accuracy_classification
 
-    other_params = {
-        'is_adv': is_adv,
-        'loss_aux_scale': adv_loss_scale,
-        'is_regression': regression,
-        'is_post_hoc': is_post_hoc
-    }
 
-    best_test_acc, best_valid_acc, test_acc_at_best_valid_acc = basic_training_loop(
-         n_epochs=epochs,
-         model=model,
-         train_iterator=train_iterator,
-         dev_iterator=dev_iterator,
-         test_iterator=test_iterator,
-         optimizer=optimizer,
-         criterion=criterion,
-         device=device,
-         model_save_name=model_save_name,
-         accuracy_calculation_function = accuracy_calculation_function,
-         other_params=other_params
-    )
 
-    print(f"BEST Test Acc: {best_test_acc} || Actual Test Acc: {test_acc_at_best_valid_acc} || Best Valid Acc {best_valid_acc}")
+    if train_main_model:
+        other_params = {
+            'is_adv': is_adv,
+            'loss_aux_scale': adv_loss_scale,
+            'is_regression': regression,
+            'is_post_hoc': False # here the post-hoc has to be false
+        }
+
+        best_test_acc, best_valid_acc, test_acc_at_best_valid_acc = basic_training_loop(
+             n_epochs=epochs,
+             model=model,
+             train_iterator=train_iterator,
+             dev_iterator=dev_iterator,
+             test_iterator=test_iterator,
+             optimizer=optimizer,
+             criterion=criterion,
+             device=device,
+             model_save_name=model_save_name,
+             accuracy_calculation_function = accuracy_calculation_function,
+             other_params=other_params
+        )
+
+        print(f"BEST Test Acc: {best_test_acc} || Actual Test Acc: {test_acc_at_best_valid_acc} || Best Valid Acc {best_valid_acc}")
 
     if save_test_pred:
         print("running experiments over test pred: Only valid in specific conditions")
