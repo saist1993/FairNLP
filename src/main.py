@@ -20,9 +20,9 @@ from typing import Optional, Callable, List
 
 
 # custom imports
+import config
 import create_data
 import tokenizer_wrapper
-from config import BILSTM_PARAMS
 from utils import resolve_device, CustomError
 from training_loop import basic_training_loop
 from utils import clean_text as clean_text_function
@@ -127,6 +127,7 @@ def get_pretrained_embedding(initial_embedding, pretrained_vectors, vocab, devic
 @click.option('-is_post_hoc', '--is_post_hoc', type=bool, default=False, help="trains a post-hoc classifier")
 @click.option('-train_main_model', '--train_main_model', type=bool, default=True, help="If false; only trains post-hoc classifier")
 @click.option('-use_wandb', '--use_wandb', type=bool, default=False, help="make sure the project is configured to use wandb")
+@click.option('-config_dict', '--config_dict', type=str, default="simple", help="which config to use")
 
 def main(emb_dim:int,
          spacy_model:str,
@@ -154,13 +155,19 @@ def main(emb_dim:int,
          eps:float,
          is_post_hoc:bool,
          train_main_model:bool,
-         use_wandb:bool):
+         use_wandb:bool,
+         config_dict:str):
 
     if use_wandb:
         import wandb
         wandb.init(project='bias_in_nlp', entity='magnet', config = click.get_current_context().params)
     else:
         wandb = False
+
+    if config_dict == 'simple':
+        BILSTM_PARAMS = config.BILSTM_PARAMS
+    elif config_dict == 'three_layer':
+        BILSTM_PARAMS = config.BILSTM_PARAMS_CONFIG3
 
     print(f"seed is {seed}")
     torch.manual_seed(seed)
@@ -237,7 +244,7 @@ def main(emb_dim:int,
             'emb_dim': emb_dim,
             'hidden_dim': BILSTM_PARAMS['hidden_dim'],
             'output_dim': output_dim,
-            'n_layers': BILSTM_PARAMS['n_layers'],
+            'n_layers': no_of_bilstm_layer,
             'dropout': BILSTM_PARAMS['dropout'],
             'pad_idx': vocab[pad_token],
             'adv_number_of_layers': BILSTM_PARAMS['adv_number_of_layers'],
