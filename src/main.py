@@ -340,7 +340,7 @@ def main(emb_dim:int,
         # step 2 -> init the post-hoc model
         post_hoc = Attacker(model_params,model)
         post_hoc = post_hoc.to(device)
-        optimizer = optim.Adam(model.parameters([param for param in post_hoc.parameters() if param.requires_grad == True]),
+        optimizer = optim.Adam(post_hoc.parameters([param for param in post_hoc.parameters() if param.requires_grad == True]),
                                lr=0.01)
 
 
