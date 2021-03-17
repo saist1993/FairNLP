@@ -355,7 +355,7 @@ def main(emb_dim:int,
         }
 
         best_test_acc, best_valid_acc, test_acc_at_best_valid_acc = basic_training_loop(
-             n_epochs=30,
+             n_epochs=15,
              model=post_hoc,
              train_iterator=train_iterator,
              dev_iterator=dev_iterator,
