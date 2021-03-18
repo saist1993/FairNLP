@@ -128,6 +128,7 @@ def get_pretrained_embedding(initial_embedding, pretrained_vectors, vocab, devic
 @click.option('-train_main_model', '--train_main_model', type=bool, default=True, help="If false; only trains post-hoc classifier")
 @click.option('-use_wandb', '--use_wandb', type=bool, default=False, help="make sure the project is configured to use wandb")
 @click.option('-config_dict', '--config_dict', type=str, default="simple", help="which config to use")
+@click.option('-experiment_name', '--experiment_name', type=str, default="NA", help="name of group of experiment")
 
 def main(emb_dim:int,
          spacy_model:str,
@@ -156,7 +157,8 @@ def main(emb_dim:int,
          is_post_hoc:bool,
          train_main_model:bool,
          use_wandb:bool,
-         config_dict:str):
+         config_dict:str,
+         experiment_name:str):
 
     if use_wandb:
         import wandb
