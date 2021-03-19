@@ -27,7 +27,7 @@ from utils import resolve_device, CustomError
 from training_loop import basic_training_loop
 from utils import clean_text as clean_text_function
 from utils import clean_text_tweet as clean_text_function_tweet
-from models import BiLSTM, initialize_parameters, BiLSTMAdv, BOWClassifier, Attacker
+from models import BiLSTM, initialize_parameters, BiLSTMAdv, BOWClassifier, Attacker, CNN
 
 import bias_in_bios_analysis
 
@@ -246,7 +246,7 @@ def main(emb_dim:int,
             'emb_dim': emb_dim,
             'hidden_dim': BILSTM_PARAMS['hidden_dim'],
             'output_dim': output_dim,
-            'n_layers': no_of_bilstm_layer,
+            'n_layers': BILSTM_PARAMS['n_layers'],
             'dropout': BILSTM_PARAMS['dropout'],
             'pad_idx': vocab[pad_token],
             'adv_number_of_layers': BILSTM_PARAMS['adv_number_of_layers'],
@@ -255,6 +255,17 @@ def main(emb_dim:int,
         }
         model = BOWClassifier(model_params)
         model.apply(initialize_parameters)
+    elif model == 'cnn':
+        model_params = {
+            'input_dim': input_dim,
+            'emb_dim': emb_dim,
+            'dropout': BILSTM_PARAMS['dropout'],
+            'output_dim': output_dim,
+            'num_filters': BILSTM_PARAMS['num_filters'],
+            'filter_sizes': BILSTM_PARAMS['filter_sizes'],
+            'pad_idx': vocab[pad_token]
+        }
+        model = CNN(model_params)
     else:
         raise CustomError("No such model found")
 
