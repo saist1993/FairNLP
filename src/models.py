@@ -5,6 +5,49 @@ import torch.nn.functional as func
 from utils import GradReverse, laplace
 
 
+class CNN(nn.Module):
+    def __init__(self, model_params):
+        super().__init__()
+        input_dim = model_params['input_dim']
+        emb_dim = model_params['emb_dim']
+        pad_idx = model_params['pad_idx']
+        num_filters = model_params['num_filters']
+        filter_sizes = model_params['filter_sizes']
+        output_dim = model_params['output_dim']
+        dropout = model_params['dropout']
+
+        self.embedding = nn.Embedding(input_dim, emb_dim, padding_idx=pad_idx)
+        self.convs = nn.ModuleList(
+            [nn.Conv2d(
+                in_channels=1,
+                out_channels= num_filters,
+                kernel_size= (fs, emb_dim)
+            ) for fs in filter_sizes]
+        )
+
+        self.fc = nn.Linear(len(filter_sizes)*num_filters, output_dim)
+        self.dropout = nn.Dropout(dropout)
+
+
+    def forward(self, text, lengths):
+        """Note that length is not used. Can be a dummy. Kept for consistency purpose"""
+        embedded = self.embedding(text.transpose(1,0)) # text = bs*sl -> embedded = bs*sl*emb_dim
+        embedded = embedded.unsqueeze(1) # bs*sl*emb_dim
+
+        conved = [func.relu(conv(embedded)).squeeze(3) for conv in self.convs]
+
+        # conved_n = [batch size, n_filters, sent len - filter_sizes[n] + 1]
+
+        pooled = [func.max_pool1d(conv, conv.shape[2]).squeeze(2) for conv in conved]
+
+        # pooled_n = [batch size, n_filters]
+
+        cat = self.dropout(torch.cat(pooled, dim=1))
+
+        # cat = [batch size, n_filters * len(filter_sizes)]
+
+        return self.fc(cat)
+
 class BiLSTM(nn.Module):
     def __init__(self, model_params):
         super().__init__()
@@ -217,6 +260,7 @@ class Attacker(nn.Module):
         _, _, hidden = self.original_model(text, lengths)
         output = self.adv(hidden)
         return output
+
 
 def initialize_parameters(m):
     if isinstance(m, nn.Embedding):
