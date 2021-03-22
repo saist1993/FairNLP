@@ -48,6 +48,46 @@ class CNN(nn.Module):
 
         return self.fc(cat)
 
+
+class CNNAdv(nn.Module):
+    def __init__(self, model_params):
+        super().__init__()
+        input_dim = model_params['input_dim']
+        emb_dim = model_params['emb_dim']
+        pad_idx = model_params['pad_idx']
+        num_filters = model_params['num_filters']
+        filter_sizes = model_params['filter_sizes']
+        output_dim = model_params['output_dim']
+        dropout = model_params['dropout']
+        adv_number_of_layers = model_params['adv_number_of_layers']
+        adv_dropout = model_params['adv_dropout']
+        self.device = model_params['device']
+        self.noise_layer = model_params['noise_layer']
+        self.eps = model_params['eps']
+        try:
+            self.return_hidden = model_params['return_hidden']
+        except KeyError:
+            self.return_hidden = False
+
+
+        self.embedding = nn.Embedding(input_dim, emb_dim, padding_idx=pad_idx)
+        self.convs = nn.ModuleList(
+            [nn.Conv2d(
+                in_channels=1,
+                out_channels= num_filters,
+                kernel_size= (fs, emb_dim)
+            ) for fs in filter_sizes]
+        )
+
+        self.fc = nn.Linear(len(filter_sizes)*num_filters, output_dim)
+        self.dropout = nn.Dropout(dropout)
+
+        self.adv = DomainAdv(number_of_layers=adv_number_of_layers, input_dim=len(filter_sizes)*num_filters,
+                             hidden_dim=hid_dim, output_dim=2, dropout=adv_dropout)
+
+        self.adv.apply(initialize_parameters) # don't know, if this is needed.
+
+
 class BiLSTM(nn.Module):
     def __init__(self, model_params):
         super().__init__()

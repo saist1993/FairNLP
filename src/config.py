@@ -13,7 +13,7 @@ BILSTM_PARAMS_CONFIG3 = {
     'name' : 'three_layer',
     'hidden_dim': 512,
     'dropout': 0.5,
-    'n_layers': 3,
+    'n_layers': 1,
     'adv_number_of_layers': 2,
     'adv_dropout': 0.4,
     'num_filters': 200,
