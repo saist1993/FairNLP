@@ -170,7 +170,12 @@ def main(emb_dim:int,
         BILSTM_PARAMS = config.BILSTM_PARAMS
     elif config_dict == 'three_layer':
         BILSTM_PARAMS = config.BILSTM_PARAMS_CONFIG3
-
+    elif config_dict == 'four_layer':
+        BILSTM_PARAMS = config.BILSTM_PARAMS_CONFIG4
+    elif config_dict == 'five_layer':
+        BILSTM_PARAMS = config.BILSTM_PARAMS_CONFIG5
+    else:
+        raise CustomError("no config file selected")
     print(f"seed is {seed}")
     torch.manual_seed(seed)
     random.seed(seed)
