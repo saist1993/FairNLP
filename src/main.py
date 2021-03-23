@@ -27,7 +27,7 @@ from utils import resolve_device, CustomError
 from training_loop import basic_training_loop
 from utils import clean_text as clean_text_function
 from utils import clean_text_tweet as clean_text_function_tweet
-from models import BiLSTM, initialize_parameters, BiLSTMAdv, BOWClassifier, Attacker, CNN
+from models import BiLSTM, initialize_parameters, BiLSTMAdv, BOWClassifier, Attacker, CNN, BiLSTMAdvWithFreeze
 
 import bias_in_bios_analysis
 
@@ -237,10 +237,12 @@ def main(emb_dim:int,
             'adv_dropout' : BILSTM_PARAMS['adv_dropout'],
             'device': device,
             'noise_layer': noise_layer,
-            'eps': eps
+            'eps': eps,
+            'learnable_embeddings': learnable_embeddings
         }
         if is_adv:
-            model = BiLSTMAdv(model_params)
+            # model = BiLSTMAdv(model_params)
+            model = BiLSTMAdvWithFreeze(model_params)
             model.apply(initialize_parameters)
         else:
             model = BiLSTM(model_params)
@@ -287,7 +289,10 @@ def main(emb_dim:int,
         model.embedding.weight.data.copy_(pretrained_embedding)
 
     if not learnable_embeddings:
-        model.embedding.weight.requires_grad = False
+        try:
+            model.embedding.weight.requires_grad = False
+        except:
+            model.embedder.embedding.weight.requires_grad = False
 
     print("model initialized")
     model = model.to(device)
@@ -295,6 +300,7 @@ def main(emb_dim:int,
     # setting up optimizer
     optimizer = optim.Adam(model.parameters([param for param in model.parameters() if param.requires_grad == True]), lr=0.01)
 
+    model.freeze_unfreeze_classifier(freeze=True)
     # setting up loss function
     if number_of_labels == 1:
         criterion = nn.MSELoss()
