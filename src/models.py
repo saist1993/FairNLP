@@ -197,6 +197,13 @@ class BiLSTMAdv(nn.Module):
 
         self.adv.apply(initialize_parameters) # don't know, if this is needed.
 
+    def freeze_unfreeze_adv(self, freeze=True):
+        if freeze:
+            for param_group in self.adv.parameters():
+                param_group.requires_grad = False
+        else:
+            for param_group in self.adv.parameters():
+                param_group.requires_grad = True
 
 
     def forward(self, text, lengths):
@@ -251,7 +258,6 @@ class BiLSTMAdv(nn.Module):
         return prediction, adv_output
 
 
-
 class BOWClassifier(nn.Module):
     def __init__(self, model_params):
         super().__init__()
@@ -300,6 +306,138 @@ class Attacker(nn.Module):
         _, _, hidden = self.original_model(text, lengths)
         output = self.adv(hidden)
         return output
+
+
+class EmbedderLSTM(nn.Module):
+    def __init__(self, model_params):
+        super().__init__()
+        input_dim = model_params['input_dim']
+        emb_dim = model_params['emb_dim']
+        hid_dim = model_params['hidden_dim']
+        output_dim = model_params['output_dim']
+        n_layers = model_params['n_layers']
+        dropout = model_params['dropout']
+        pad_idx = model_params['pad_idx']
+
+        self.embedding = nn.Embedding(input_dim, emb_dim, padding_idx=pad_idx)
+        self.lstm = nn.LSTM(emb_dim, hid_dim, num_layers=n_layers, bidirectional=True, dropout=dropout)
+        self.dropout = nn.Dropout(dropout)
+
+    def forward(self, text, lengths):
+        # text = [seq len, batch size]
+        # lengths = [batch size]
+
+        embedded = self.dropout(self.embedding(text))
+
+        # embedded = [seq len, batch size, emb dim]
+
+        packed_embedded = nn.utils.rnn.pack_padded_sequence(embedded, lengths, enforce_sorted=False)
+
+        packed_output, (hidden, cell) = self.lstm(packed_embedded)
+
+        output, _ = nn.utils.rnn.pad_packed_sequence(packed_output)
+
+        # outputs = [seq_len, batch size, n directions * hid dim]
+        # hidden = [n layers * n directions, batch size, hid dim]
+
+        hidden_fwd = hidden[-2]
+        hidden_bck = hidden[-1]
+
+        # hidden_fwd/bck = [batch size, hid dim]
+
+        hidden = torch.cat((hidden_fwd, hidden_bck), dim=1)
+
+        return hidden
+
+
+class BiLSTMAdvWithFreeze(nn.Module):
+    def __init__(self, model_params):
+        super().__init__()
+
+        input_dim = model_params['input_dim']
+        emb_dim = model_params['emb_dim']
+        hid_dim = model_params['hidden_dim']
+        output_dim = model_params['output_dim']
+        n_layers = model_params['n_layers']
+        dropout = model_params['dropout']
+        pad_idx = model_params['pad_idx']
+        adv_number_of_layers = model_params['adv_number_of_layers']
+        adv_dropout = model_params['adv_dropout']
+        self.device = model_params['device']
+        self.noise_layer = model_params['noise_layer']
+        self.eps = model_params['eps']
+        self.learnable_embeddings = model_params['learnable_embeddings']
+
+        try:
+            self.return_hidden = model_params['return_hidden']
+        except KeyError:
+            self.return_hidden = False
+
+        self.embedder = EmbedderLSTM(model_params)
+        self.adv = DomainAdv(number_of_layers=adv_number_of_layers, input_dim=2*hid_dim,
+                             hidden_dim=hid_dim, output_dim=2, dropout=adv_dropout)
+        self.classifier = DomainAdv(number_of_layers=adv_number_of_layers, input_dim=2 * hid_dim,
+                             hidden_dim=hid_dim, output_dim=output_dim, dropout=adv_dropout)
+        self.adv.apply(initialize_parameters) # don't know, if this is needed.
+        self.classifier.apply(initialize_parameters)  # don't know, if this is needed.
+        self.embedder.apply(initialize_parameters)  # don't know, if this is needed.
+
+
+    def freeze_unfreeze_adv(self, freeze=True):
+        if freeze:
+            for param_group in self.adv.parameters():
+                param_group.requires_grad = False
+        else:
+            for param_group in self.adv.parameters():
+                param_group.requires_grad = True
+
+    def freeze_unfreeze_classifier(self, freeze=True):
+        if freeze:
+            for param_group in self.classifier.parameters():
+                param_group.requires_grad = False
+        else:
+            for param_group in self.classifier.parameters():
+                param_group.requires_grad = True
+
+    def freeze_unfreeze_embedder(self, freeze=True):
+        if freeze:
+            for param_group in self.embedder.parameters():
+                param_group.requires_grad = False
+        else:
+            for param_group in self.embedder.parameters():
+                param_group.requires_grad = True
+            if not self.learnable_embeddings:
+                self.embedder.embedding.weight.requires_grad = False
+
+
+    def forward(self, text, lengths):
+        # text = [seq len, batch size]
+        # lengths = [batch size]
+
+
+
+        hidden = self.embedder(text, lengths)
+
+
+
+        if self.noise_layer:
+            m = torch.distributions.laplace.Laplace(torch.tensor([0.0]), torch.tensor([laplace(self.eps, 1)]))
+            max_hidden = torch.max(hidden, 1, keepdims=True)[0]
+            min_hidden = torch.min(hidden, 1, keepdims=True)[0]
+            hidden = (hidden - min_hidden)/ (max_hidden - min_hidden)
+            # hidden = hidden/torch.norm(hidden, keepdim=True)
+            hidden = hidden + m.sample(hidden.shape).squeeze().to(self.device)
+
+
+        # hidden = hidden/torch.norm(hidden, keepdim=True)
+
+        prediction = self.classifier(hidden)
+        adv_output = self.adv(GradReverse.apply(hidden))
+
+        if self.return_hidden:
+            return prediction, adv_output, hidden
+
+        return prediction, adv_output
 
 
 def initialize_parameters(m):

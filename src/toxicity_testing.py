@@ -39,6 +39,7 @@ from utils import clean_text as clean_text_function
 from utils import clean_text_tweet as clean_text_function_tweet
 from models import BiLSTM, initialize_parameters, BiLSTMAdv, BOWClassifier
 
+import config
 # import bias_in_bios_analysis
 
 
@@ -129,16 +130,38 @@ def predict_sentiment(tokenizer, vocab, model, device, sentence):
 #                ]
 
 
-models_path = [ '../toxic_model_2/model_toxic_second/simple_glove_bow.pt',
-               '../toxic_model_2/model_toxic_second/conceptor_gender_bow.pt',
-               '../toxic_model_2/model_toxic_second/conceptor_race_bow.pt',
-               '../toxic_model_2/model_toxic_second/conceptor_gender_race_bow.pt',
-                '../toxic_model_2/model_toxic_second/null_space_gender_bow.pt',
-               '../toxic_model_2/model_toxic_second/null_space_race_bow.pt',
-               '../toxic_model_2/model_toxic_second/null_space_gender_race_bow.pt'
+# models_path = [ '../toxic_model_2/model_toxic_second/simple_glove_bow.pt',
+#                '../toxic_model_2/model_toxic_second/conceptor_gender_bow.pt',
+#                '../toxic_model_2/model_toxic_second/conceptor_race_bow.pt',
+#                '../toxic_model_2/model_toxic_second/conceptor_gender_race_bow.pt',
+#                 '../toxic_model_2/model_toxic_second/null_space_gender_bow.pt',
+#                '../toxic_model_2/model_toxic_second/null_space_race_bow.pt',
+#                '../toxic_model_2/model_toxic_second/null_space_gender_race_bow.pt'
+#                ]
+
+# models_path = [ '../model_toxic_second_1_layer_256/model_toxic_second_1_layer_256/simple_glove_bilstm.pt',
+#                '../model_toxic_second_1_layer_256/model_toxic_second_1_layer_256/conceptor_gender_bilstm.pt',
+#                '../model_toxic_second_1_layer_256/model_toxic_second_1_layer_256/conceptor_race_bilstm.pt',
+#                '../model_toxic_second_1_layer_256/model_toxic_second_1_layer_256/conceptor_gender_race_bilstm.pt',
+#                 '../model_toxic_second_1_layer_256/model_toxic_second_1_layer_256/null_space_gender_bilstm.pt',
+#                '../model_toxic_second_1_layer_256/model_toxic_second_1_layer_256/null_space_race_bilstm.pt',
+#                # '../model_toxic_second_1_layer_256/model_toxic_second_1_layer_256/null_space_gender_race_bilstm.pt'
+#                ]
+
+
+models_path = [ '../model_toxic_second_3_layers/simple_glove_bilstm.pt',
+               '../model_toxic_second_3_layers/conceptor_gender_bilstm.pt',
+               '../model_toxic_second_3_layers/conceptor_race_bilstm.pt',
+               '../model_toxic_second_3_layers/conceptor_gender_race_bilstm.pt',
+                '../model_toxic_second_3_layers/null_space_gender_bilstm.pt',
+               '../model_toxic_second_3_layers/null_space_race_bilstm.pt',
+               # '../model_toxic_second_3_layers/null_space_gender_race_bilstm.pt'
                ]
+
+
 vocabs_path = [i+'_vocab.pkl' for i in models_path]
 
+config_dict = 'three_layer'
 european_american = ['white',  'european american']
 african_american = ['black',  'african american']
 male = ['male', 'man', 'men', 'guy', 'gentleman']
@@ -194,6 +217,7 @@ def avg_score_diff(identity1, identity2, sentence_templates, string_to_print):
     return string_to_print, round(np.mean(avg_diff_across_all_templates), 4), round(np.mean(positive_templates_diff),4), round(np.mean(negative_templates_diff), 4)
 
 for model_path, vocab_path in zip(models_path, vocabs_path):
+    print(model_path)
     vocab = pickle.load(open(vocab_path, 'rb'))
     # train_data = process_data(raw_data=debias_train_raw, vocab=vocab)
     # dev_data = process_data(raw_data=debias_dev_raw, vocab=vocab)
@@ -209,6 +233,19 @@ for model_path, vocab_path in zip(models_path, vocabs_path):
     is_adv = False
 
     if model == 'bilstm':
+
+        if config_dict == 'simple':
+            BILSTM_PARAMS = config.BILSTM_PARAMS
+        elif config_dict == 'three_layer':
+            BILSTM_PARAMS = config.BILSTM_PARAMS_CONFIG3
+        elif config_dict == 'four_layer':
+            BILSTM_PARAMS = config.BILSTM_PARAMS_CONFIG4
+        elif config_dict == 'five_layer':
+            BILSTM_PARAMS = config.BILSTM_PARAMS_CONFIG5
+        else:
+            raise CustomError("no config file selected")
+
+
         model_params = {
             'input_dim': input_dim,
             'emb_dim': emb_dim,
