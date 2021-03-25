@@ -241,8 +241,8 @@ def main(emb_dim:int,
             'learnable_embeddings': learnable_embeddings
         }
         if is_adv:
-            # model = BiLSTMAdv(model_params)
-            model = BiLSTMAdvWithFreeze(model_params)
+            model = BiLSTMAdv(model_params)
+            # model = BiLSTMAdvWithFreeze(model_params)
             model.apply(initialize_parameters)
         else:
             model = BiLSTM(model_params)
@@ -300,7 +300,6 @@ def main(emb_dim:int,
     # setting up optimizer
     optimizer = optim.Adam(model.parameters([param for param in model.parameters() if param.requires_grad == True]), lr=0.01)
 
-    model.freeze_unfreeze_classifier(freeze=True)
     # setting up loss function
     if number_of_labels == 1:
         criterion = nn.MSELoss()
@@ -354,6 +353,7 @@ def main(emb_dim:int,
     if is_post_hoc:
         # the post_hoc classifier will be trained.
         # assert is_adv == True
+
         if not is_adv:
             is_adv = True
             adv_loss_scale = 0.0
