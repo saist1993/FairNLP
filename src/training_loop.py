@@ -151,6 +151,7 @@ def train_adv_three_phase(model, iterator, optimizer, criterion, device, accurac
     epoch_acc_main = 0
     epoch_loss_aux = 0
     epoch_acc_aux = 0
+    print(phase)
 
     for labels, text, lengths, aux in tqdm(iterator):
         labels = labels.to(device)
@@ -525,9 +526,9 @@ def three_phase_training_loop(
 
     for epoch in range(n_epochs):
 
-        if epoch < 3:
+        if epoch < 5:
             phase = 'initial'
-        elif epoch >3 and epoch<5:
+        elif epoch >=5 and epoch<10:
             phase = 'perturbate'
         else:
             phase = 'recover'
@@ -547,92 +548,58 @@ def three_phase_training_loop(
 
         epoch_mins, epoch_secs = epoch_time(start_time, end_time)
 
-        if is_post_hoc:
-            # log stuff there and model is not save in this setting.
-            valid_loss, valid_acc = valid_loss_aux, valid_acc_aux
-            train_loss, train_acc = train_loss_aux, train_acc_aux
-            test_loss, test_acc = test_loss_aux, test_acc_aux
 
-            # check the best accuracy and update it
+        valid_loss, valid_acc = valid_total_loss, valid_acc_main
+        train_loss, train_acc = train_total_loss, train_acc_main
+        test_loss, test_acc = test_total_loss, test_acc_main
 
-            # log all the required stuff
+        if save_model:
+            if valid_loss < best_valid_loss:
+                print(f"model saved as: {model_save_name}")
+                best_valid_loss = valid_loss
+                torch.save(model.state_dict(), model_save_name)
 
-            if valid_acc > best_valid_acc:
-                best_valid_acc = valid_acc
-                test_acc_at_best_valid_acc = test_acc
+        if valid_acc > best_valid_acc:
+            best_valid_acc = valid_acc
+            test_acc_at_best_valid_acc = test_acc
 
-            if test_acc > best_test_acc:
-                best_test_acc = test_acc
+        if test_acc > best_test_acc:
+            best_test_acc = test_acc
 
-            print(f'Posthoc: Epoch: {epoch + 1:02} | Epoch Time: {epoch_mins}m {epoch_secs}s')
-            print(f'\tTrain Loss: {train_loss:.3f} | Train Acc: {train_acc}%')
-            print(f'\t Val. Loss: {valid_loss:.3f} |  Val. Acc: {valid_acc}%')
-            print(f'\t Test Loss: {test_loss:.3f} |  Val. Acc: {test_acc}%')
+        print(f'Epoch: {epoch + 1:02} | Epoch Time: {epoch_mins}m {epoch_secs}s')
+        print(f'\tTrain Loss: {train_loss:.3f} | Train Acc: {train_acc}%')
+        print(f'\t Val. Loss: {valid_loss:.3f} |  Val. Acc: {valid_acc}%')
+        print(f'\t Test Loss: {test_loss:.3f} |  Val. Acc: {test_acc}%')
 
-            if wandb:
-                wandb.log({
-                    'post_hoc_train_loss': train_loss,
-                    'post_hoc_valid_loss': valid_loss,
-                    'post_hoc_test_loss': test_loss,
-                    'post_hoc_epoch': epoch,
-                    'post_hoc_train_acc': train_acc,
-                    'post_hoc_valid_acc': valid_acc,
-                    'post_hoc_test_acc': test_acc
-                })
+        if wandb:
+            wandb.log({
+                'train_loss': train_loss,
+                'valid_loss': valid_loss,
+                'test_loss': test_loss,
+                'epoch': epoch,
+                'train_acc': train_acc,
+                'valid_acc': valid_acc,
+                'test_acc': test_acc
+            })
 
-        else:
-            # log stuff here
-            valid_loss, valid_acc = valid_total_loss, valid_acc_main
-            train_loss, train_acc = train_total_loss, train_acc_main
-            test_loss, test_acc = test_total_loss, test_acc_main
-
-            if save_model:
-                if valid_loss < best_valid_loss:
-                    print(f"model saved as: {model_save_name}")
-                    best_valid_loss = valid_loss
-                    torch.save(model.state_dict(), model_save_name)
-
-            if valid_acc > best_valid_acc:
-                best_valid_acc = valid_acc
-                test_acc_at_best_valid_acc = test_acc
-
-            if test_acc > best_test_acc:
-                best_test_acc = test_acc
-
-            print(f'Epoch: {epoch + 1:02} | Epoch Time: {epoch_mins}m {epoch_secs}s')
-            print(f'\tTrain Loss: {train_loss:.3f} | Train Acc: {train_acc}%')
-            print(f'\t Val. Loss: {valid_loss:.3f} |  Val. Acc: {valid_acc}%')
-            print(f'\t Test Loss: {test_loss:.3f} |  Val. Acc: {test_acc}%')
-
-            if wandb:
-                wandb.log({
-                    'train_loss': train_loss,
-                    'valid_loss': valid_loss,
-                    'test_loss': test_loss,
-                    'epoch': epoch,
-                    'train_acc': train_acc,
-                    'valid_acc': valid_acc,
-                    'test_acc': test_acc
-                })
-
-                wandb.log({
-                    'train_loss_total': train_total_loss,
-                    'train_loss_main': train_loss_main,
-                    'train_loss_aux': train_loss_aux,
-                    'valid_loss_total': valid_total_loss,
-                    'valid_loss_main': valid_loss_main,
-                    'valid_loss_aux': valid_loss_aux,
-                    'test_loss_total': test_total_loss,
-                    'test_loss_main': test_loss_main,
-                    'test_loss_aux': test_loss_aux,
-                    'train_acc_main': train_acc_main,
-                    'train_acc_aux': train_acc_aux,
-                    'valid_acc_main': valid_acc_main,
-                    'valid_acc_aux': valid_acc_aux,
-                    'test_acc_main': test_acc_main,
-                    'test_acc_aux': test_acc_aux,
-                    'epoch': epoch
-                })
+            wandb.log({
+                'train_loss_total': train_total_loss,
+                'train_loss_main': train_loss_main,
+                'train_loss_aux': train_loss_aux,
+                'valid_loss_total': valid_total_loss,
+                'valid_loss_main': valid_loss_main,
+                'valid_loss_aux': valid_loss_aux,
+                'test_loss_total': test_total_loss,
+                'test_loss_main': test_loss_main,
+                'test_loss_aux': test_loss_aux,
+                'train_acc_main': train_acc_main,
+                'train_acc_aux': train_acc_aux,
+                'valid_acc_main': valid_acc_main,
+                'valid_acc_aux': valid_acc_aux,
+                'test_acc_main': test_acc_main,
+                'test_acc_aux': test_acc_aux,
+                'epoch': epoch
+            })
 
 
 
