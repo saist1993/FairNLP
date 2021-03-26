@@ -241,8 +241,8 @@ def main(emb_dim:int,
             'learnable_embeddings': learnable_embeddings
         }
         if is_adv:
-            model = BiLSTMAdv(model_params)
-            # model = BiLSTMAdvWithFreeze(model_params)
+            # model = BiLSTMAdv(model_params)
+            model = BiLSTMAdvWithFreeze(model_params)
             model.apply(initialize_parameters)
         else:
             model = BiLSTM(model_params)

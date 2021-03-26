@@ -197,14 +197,6 @@ class BiLSTMAdv(nn.Module):
 
         self.adv.apply(initialize_parameters) # don't know, if this is needed.
 
-    def freeze_unfreeze_adv(self, freeze=True):
-        if freeze:
-            for param_group in self.adv.parameters():
-                param_group.requires_grad = False
-        else:
-            for param_group in self.adv.parameters():
-                param_group.requires_grad = True
-
 
     def forward(self, text, lengths):
         # text = [seq len, batch size]
@@ -251,6 +243,7 @@ class BiLSTMAdv(nn.Module):
 
         prediction = self.fc(hidden)
         adv_output = self.adv(GradReverse.apply(hidden))
+        # adv_output = prediction
 
         if self.return_hidden:
             return prediction, adv_output, hidden
