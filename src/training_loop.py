@@ -36,6 +36,9 @@ def train(model, iterator, optimizer, criterion, device, accuracy_calculation_fu
 
         optimizer.step()
 
+
+
+
         epoch_loss += loss.item()
         epoch_acc += acc.item()
 
@@ -119,11 +122,15 @@ def train_adv(model, iterator, optimizer, criterion, device, accuracy_calculatio
             else:
                 loss_main = criterion(predictions, labels)
                 loss_aux = criterion(aux_predictions, aux)
+
             acc_main = accuracy_calculation_function(predictions, labels)
-            acc_aux = accuracy_calculation_function(predictions, aux)
+            acc_aux = accuracy_calculation_function(aux_predictions, aux)
+
 
             total_loss = loss_main + (loss_aux_scale*loss_aux)
             total_loss.backward()
+
+        optimizer.step()
 
         epoch_loss_main.append(loss_main.item())
         epoch_acc_main.append(acc_main.item())
@@ -131,9 +138,7 @@ def train_adv(model, iterator, optimizer, criterion, device, accuracy_calculatio
         epoch_acc_aux.append(acc_aux.item())
         epoch_total_loss.append(total_loss.item())
 
-        optimizer.step()
-
-    return np.mean(total_loss), np.mean(epoch_loss_main), np.mean(epoch_acc_main), np.mean(epoch_loss_aux), np.mean(epoch_acc_aux)
+    return np.mean(epoch_total_loss), np.mean(epoch_loss_main), np.mean(epoch_acc_main), np.mean(epoch_loss_aux), np.mean(epoch_acc_aux)
 
 
 def train_adv_three_phase(model, iterator, optimizer, criterion, device, accuracy_calculation_function, phase, other_params):
@@ -290,8 +295,8 @@ def evaluate_adv(model, iterator, criterion, device, accuracy_calculation_functi
                 else:
                     loss_main = criterion(predictions, labels)
                     loss_aux = criterion(aux_predictions, aux)
-                acc_main = accuracy_calculation_function(predictions, labels)
-                acc_aux = accuracy_calculation_function(predictions, aux)
+                acc_main = accuracy_calculation_function(aux_predictions, labels)
+                acc_aux = accuracy_calculation_function(aux_predictions, aux)
 
                 total_loss = loss_main + (loss_aux_scale * loss_aux)
 
@@ -305,7 +310,7 @@ def evaluate_adv(model, iterator, criterion, device, accuracy_calculation_functi
             epoch_acc_aux.append(acc_aux.item())
             epoch_total_loss.append(total_loss.item())
 
-    return np.mean(total_loss), np.mean(epoch_loss_main), np.mean(epoch_acc_main), np.mean(epoch_loss_aux), np.mean(epoch_acc_aux)
+    return np.mean(epoch_total_loss ), np.mean(epoch_loss_main), np.mean(epoch_acc_main), np.mean(epoch_loss_aux), np.mean(epoch_acc_aux)
 
 
 
@@ -509,6 +514,10 @@ def three_phase_training_loop(
     is_adv = other_params['is_adv']
     save_model = other_params['save_model']
     print(f"is adv: {is_adv}")
+    try:
+        is_post_hoc = other_params['is_post_hoc']
+    except KeyError:
+        is_post_hoc = False
 
     assert is_adv == True
 
@@ -516,10 +525,115 @@ def three_phase_training_loop(
 
     for epoch in range(n_epochs):
 
+        if epoch < 3:
+            phase = 'initial'
+        elif epoch >3 and epoch<5:
+            phase = 'perturbate'
+        else:
+            phase = 'recover'
+
         start_time = time.monotonic()
         train_loss_main, train_loss_aux, train_acc_main,train_acc_aux  = train_adv_three_phase(model, train_iterator, optimizer, criterion, device,
                                           accuracy_calculation_function, phase, other_params)
-        valid_loss, valid_acc = evaluate_adv(model, dev_iterator, criterion, device, accuracy_calculation_function,
+        valid_total_loss, valid_loss_main, valid_acc_main, valid_loss_aux, valid_acc_aux = evaluate_adv(model, dev_iterator, criterion, device, accuracy_calculation_function,
                                              other_params)
-        test_loss, test_acc = evaluate_adv(model, test_iterator, criterion, device, accuracy_calculation_function,
+        test_total_loss, test_loss_main, test_acc_main, test_loss_aux, test_acc_aux = evaluate_adv(model, test_iterator, criterion, device, accuracy_calculation_function,
                                            other_params)
+
+        train_total_loss = 0
+
+
+        end_time = time.monotonic()
+
+        epoch_mins, epoch_secs = epoch_time(start_time, end_time)
+
+        if is_post_hoc:
+            # log stuff there and model is not save in this setting.
+            valid_loss, valid_acc = valid_loss_aux, valid_acc_aux
+            train_loss, train_acc = train_loss_aux, train_acc_aux
+            test_loss, test_acc = test_loss_aux, test_acc_aux
+
+            # check the best accuracy and update it
+
+            # log all the required stuff
+
+            if valid_acc > best_valid_acc:
+                best_valid_acc = valid_acc
+                test_acc_at_best_valid_acc = test_acc
+
+            if test_acc > best_test_acc:
+                best_test_acc = test_acc
+
+            print(f'Posthoc: Epoch: {epoch + 1:02} | Epoch Time: {epoch_mins}m {epoch_secs}s')
+            print(f'\tTrain Loss: {train_loss:.3f} | Train Acc: {train_acc}%')
+            print(f'\t Val. Loss: {valid_loss:.3f} |  Val. Acc: {valid_acc}%')
+            print(f'\t Test Loss: {test_loss:.3f} |  Val. Acc: {test_acc}%')
+
+            if wandb:
+                wandb.log({
+                    'post_hoc_train_loss': train_loss,
+                    'post_hoc_valid_loss': valid_loss,
+                    'post_hoc_test_loss': test_loss,
+                    'post_hoc_epoch': epoch,
+                    'post_hoc_train_acc': train_acc,
+                    'post_hoc_valid_acc': valid_acc,
+                    'post_hoc_test_acc': test_acc
+                })
+
+        else:
+            # log stuff here
+            valid_loss, valid_acc = valid_total_loss, valid_acc_main
+            train_loss, train_acc = train_total_loss, train_acc_main
+            test_loss, test_acc = test_total_loss, test_acc_main
+
+            if save_model:
+                if valid_loss < best_valid_loss:
+                    print(f"model saved as: {model_save_name}")
+                    best_valid_loss = valid_loss
+                    torch.save(model.state_dict(), model_save_name)
+
+            if valid_acc > best_valid_acc:
+                best_valid_acc = valid_acc
+                test_acc_at_best_valid_acc = test_acc
+
+            if test_acc > best_test_acc:
+                best_test_acc = test_acc
+
+            print(f'Epoch: {epoch + 1:02} | Epoch Time: {epoch_mins}m {epoch_secs}s')
+            print(f'\tTrain Loss: {train_loss:.3f} | Train Acc: {train_acc}%')
+            print(f'\t Val. Loss: {valid_loss:.3f} |  Val. Acc: {valid_acc}%')
+            print(f'\t Test Loss: {test_loss:.3f} |  Val. Acc: {test_acc}%')
+
+            if wandb:
+                wandb.log({
+                    'train_loss': train_loss,
+                    'valid_loss': valid_loss,
+                    'test_loss': test_loss,
+                    'epoch': epoch,
+                    'train_acc': train_acc,
+                    'valid_acc': valid_acc,
+                    'test_acc': test_acc
+                })
+
+                wandb.log({
+                    'train_loss_total': train_total_loss,
+                    'train_loss_main': train_loss_main,
+                    'train_loss_aux': train_loss_aux,
+                    'valid_loss_total': valid_total_loss,
+                    'valid_loss_main': valid_loss_main,
+                    'valid_loss_aux': valid_loss_aux,
+                    'test_loss_total': test_total_loss,
+                    'test_loss_main': test_loss_main,
+                    'test_loss_aux': test_loss_aux,
+                    'train_acc_main': train_acc_main,
+                    'train_acc_aux': train_acc_aux,
+                    'valid_acc_main': valid_acc_main,
+                    'valid_acc_aux': valid_acc_aux,
+                    'test_acc_main': test_acc_main,
+                    'test_acc_aux': test_acc_aux,
+                    'epoch': epoch
+                })
+
+
+
+    return best_test_acc, best_valid_acc, test_acc_at_best_valid_acc
