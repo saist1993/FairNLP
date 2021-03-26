@@ -295,7 +295,7 @@ def evaluate_adv(model, iterator, criterion, device, accuracy_calculation_functi
                 else:
                     loss_main = criterion(predictions, labels)
                     loss_aux = criterion(aux_predictions, aux)
-                acc_main = accuracy_calculation_function(aux_predictions, labels)
+                acc_main = accuracy_calculation_function(predictions, labels)
                 acc_aux = accuracy_calculation_function(aux_predictions, aux)
 
                 total_loss = loss_main + (loss_aux_scale * loss_aux)
