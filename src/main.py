@@ -24,7 +24,7 @@ import config
 import create_data
 import tokenizer_wrapper
 from utils import resolve_device, CustomError
-from training_loop import basic_training_loop
+from training_loop import basic_training_loop, three_phase_training_loop
 from utils import clean_text as clean_text_function
 from utils import clean_text_tweet as clean_text_function_tweet
 from models import BiLSTM, initialize_parameters, BiLSTMAdv, BOWClassifier, Attacker, CNN, BiLSTMAdvWithFreeze
@@ -241,8 +241,8 @@ def main(emb_dim:int,
             'learnable_embeddings': learnable_embeddings
         }
         if is_adv:
-            model = BiLSTMAdv(model_params)
-            # model = BiLSTMAdvWithFreeze(model_params)
+            # model = BiLSTMAdv(model_params)
+            model = BiLSTMAdvWithFreeze(model_params)
             model.apply(initialize_parameters)
         else:
             model = BiLSTM(model_params)
@@ -323,7 +323,7 @@ def main(emb_dim:int,
             'save_model': True
         }
 
-        best_test_acc, best_valid_acc, test_acc_at_best_valid_acc = basic_training_loop(
+        best_test_acc, best_valid_acc, test_acc_at_best_valid_acc = three_phase_training_loop(
              n_epochs=epochs,
              model=model,
              train_iterator=train_iterator,
