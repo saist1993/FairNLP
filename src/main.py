@@ -280,13 +280,20 @@ def main(emb_dim:int,
 
     if use_pretrained_emb:
         print("updating embeddings")
+        try:
+            initial_embedding = model.embedding
+        except:
+            initial_embedding = model.embedder.embedding
+
         pretrained_embedding, unk_tokens = get_pretrained_embedding(initial_embedding=model.embedding,
                                                                     pretrained_vectors=pretrained_embedding,
                                                                     vocab=vocab,
                                                                     device=device)
 
-
-        model.embedding.weight.data.copy_(pretrained_embedding)
+        try:
+            model.embedding.weight.data.copy_(pretrained_embedding)
+        except:
+            model.embedder.embedding.weight.data.copy_(pretrained_embedding)
 
     if not learnable_embeddings:
         try:
