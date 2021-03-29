@@ -285,7 +285,7 @@ def main(emb_dim:int,
         except:
             initial_embedding = model.embedder.embedding
 
-        pretrained_embedding, unk_tokens = get_pretrained_embedding(initial_embedding=model.embedding,
+        pretrained_embedding, unk_tokens = get_pretrained_embedding(initial_embedding=initial_embedding,
                                                                     pretrained_vectors=pretrained_embedding,
                                                                     vocab=vocab,
                                                                     device=device)
