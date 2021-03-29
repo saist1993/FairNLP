@@ -403,7 +403,7 @@ class BiLSTMAdvWithFreeze(nn.Module):
                 self.embedder.embedding.weight.requires_grad = False
 
 
-    def forward(self, text, lengths):
+    def forward(self, text, lengths, gradient_reversal=False):
         # text = [seq len, batch size]
         # lengths = [batch size]
 
@@ -425,7 +425,10 @@ class BiLSTMAdvWithFreeze(nn.Module):
         # hidden = hidden/torch.norm(hidden, keepdim=True)
 
         prediction = self.classifier(hidden)
-        adv_output = self.adv(GradReverse.apply(hidden))
+        if gradient_reversal:
+            adv_output = self.adv(GradReverse.apply(hidden))
+        else:
+            adv_output = self.adv(hidden)
 
         if self.return_hidden:
             return prediction, adv_output, hidden

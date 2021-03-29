@@ -254,6 +254,98 @@ def train_adv_three_phase(model, iterator, optimizer, criterion, device, accurac
 
 
 
+
+
+def train_adv_three_phase_custom(model, iterator, optimizer, criterion, device, accuracy_calculation_function, phase, other_params):
+
+    model.train()
+    is_regression = other_params['is_regression']
+    loss_aux_scale = other_params["loss_aux_scale"]
+
+    epoch_loss_main = 0
+    epoch_acc_main = 0
+    epoch_loss_aux = 0
+    epoch_acc_aux = 0
+    print(phase)
+
+    for labels, text, lengths, aux in tqdm(iterator):
+        labels = labels.to(device)
+        text = text.to(device)
+        aux = aux.to(device)
+
+        if phase == 'initial' or phase == 'recover':
+            """
+            initial phase:
+                Train Embedder + Classifier for one batch
+                Train Freeze(Embedder) + Adv for one batch
+            recover phase
+                Train Freeze (Embedder) + Classifier
+                Train Freeze (Embedder) + Adv
+            """
+
+            if phase == 'recover':
+                model.freeze_unfreeze_embedder(freeze=True)
+
+            print("inside initial phase")
+            # --- train Embedder and Classifier
+            optimizer.zero_grad()
+            predictions, aux_predictions = model(text, lengths)
+            if is_regression:
+                loss_main = criterion(predictions.squeeze(), labels.squeeze())
+            else:
+                loss_main = criterion(predictions, labels)
+            loss_main.backward()
+            optimizer.step()
+            # -- Training ends ---
+
+            # -- Train freeze(E) + Adv
+            optimizer.zero_grad()
+            model.freeze_unfreeze_embedder(freeze=True)
+            predictions, aux_predictions = model(text, lengths)
+
+            if is_regression:
+                loss_aux = criterion(aux_predictions.squeeze(), aux.squeeze())
+            else:
+                loss_aux = criterion(aux_predictions, aux)
+
+            loss_aux.backward()
+            optimizer.step()
+            model.freeze_unfreeze_embedder(freeze=False)
+            # -- Training ends ---
+
+
+        elif phase == 'perturbate':
+            ''' Gradient reversal layer'''
+
+            predictions, aux_predictions = model(text, lengths, gradient_reversal=True)
+            if is_regression:
+                loss_main = criterion(predictions.squeeze(), labels.squeeze())
+                loss_aux = criterion(aux_predictions.squeeze(), aux.squeeze())
+            else:
+                loss_main = criterion(predictions, labels)
+                loss_aux = criterion(aux_predictions, aux)
+
+            total_loss = loss_main + (loss_aux_scale*loss_aux)
+            total_loss.backward()
+
+        #
+        # if phase != 'recover':
+        #     loss_aux = torch.zeros(1)
+
+        acc_main = accuracy_calculation_function(predictions, labels)
+        acc_aux = accuracy_calculation_function(predictions, aux)
+
+        # now we have acc_main, acc_aux, loss_main, loss_aux .. Log this
+
+        epoch_loss_main += loss_main.item()
+        epoch_acc_main += acc_main.item()
+        epoch_loss_aux += loss_aux.item()
+        epoch_acc_aux += acc_aux.item()
+
+        return epoch_loss_main/ len(iterator), epoch_loss_aux/ len(iterator), epoch_acc_main/ len(iterator), epoch_acc_aux/ len(iterator)
+
+
+
 def evaluate_adv(model, iterator, criterion, device, accuracy_calculation_function, other_params):
 
     epoch_loss_main = []
@@ -534,7 +626,7 @@ def three_phase_training_loop(
             phase = 'recover'
 
         start_time = time.monotonic()
-        train_loss_main, train_loss_aux, train_acc_main,train_acc_aux  = train_adv_three_phase(model, train_iterator, optimizer, criterion, device,
+        train_loss_main, train_loss_aux, train_acc_main,train_acc_aux  = train_adv_three_phase_custom(model, train_iterator, optimizer, criterion, device,
                                           accuracy_calculation_function, phase, other_params)
         valid_total_loss, valid_loss_main, valid_acc_main, valid_loss_aux, valid_acc_aux = evaluate_adv(model, dev_iterator, criterion, device, accuracy_calculation_function,
                                              other_params)
