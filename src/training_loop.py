@@ -333,7 +333,7 @@ def train_adv_three_phase_custom(model, iterator, optimizer, criterion, device, 
         #     loss_aux = torch.zeros(1)
 
         acc_main = accuracy_calculation_function(predictions, labels)
-        acc_aux = accuracy_calculation_function(predictions, aux)
+        acc_aux = accuracy_calculation_function(aux_predictions, aux)
 
         # now we have acc_main, acc_aux, loss_main, loss_aux .. Log this
 
@@ -514,15 +514,7 @@ def basic_training_loop(
                 print(f'\t Test Loss: {test_loss:.3f} |  Val. Acc: {test_acc}%')
 
                 if wandb:
-                    wandb.log({
-                        'train_loss': train_loss,
-                        'valid_loss': valid_loss,
-                        'test_loss': test_loss,
-                        'epoch': epoch,
-                        'train_acc': train_acc,
-                        'valid_acc': valid_acc,
-                        'test_acc': test_acc
-                    })
+
 
                     wandb.log({
                         'train_loss_total': train_total_loss,
@@ -618,9 +610,9 @@ def three_phase_training_loop(
 
     for epoch in range(n_epochs):
 
-        if epoch < 5:
+        if epoch < int(epoch*.40):
             phase = 'initial'
-        elif epoch >=5 and epoch<10:
+        elif epoch >=int(epoch*.40) and epoch< int(epoch*.80):
             phase = 'perturbate'
         else:
             phase = 'recover'
@@ -664,15 +656,7 @@ def three_phase_training_loop(
         print(f'\t Test Loss: {test_loss:.3f} |  Val. Acc: {test_acc}%')
 
         if wandb:
-            wandb.log({
-                'train_loss': train_loss,
-                'valid_loss': valid_loss,
-                'test_loss': test_loss,
-                'epoch': epoch,
-                'train_acc': train_acc,
-                'valid_acc': valid_acc,
-                'test_acc': test_acc
-            })
+
 
             wandb.log({
                 'train_loss_total': train_total_loss,
