@@ -330,20 +330,36 @@ def main(emb_dim:int,
             'save_model': True
         }
 
-        best_test_acc, best_valid_acc, test_acc_at_best_valid_acc = three_phase_training_loop(
-             n_epochs=epochs,
-             model=model,
-             train_iterator=train_iterator,
-             dev_iterator=dev_iterator,
-             test_iterator=test_iterator,
-             optimizer=optimizer,
-             criterion=criterion,
-             device=device,
-             model_save_name=model_save_name,
-             accuracy_calculation_function = accuracy_calculation_function,
-             wandb=wandb,
-             other_params=other_params
-        )
+        if is_adv:
+            best_test_acc, best_valid_acc, test_acc_at_best_valid_acc = three_phase_training_loop(
+                 n_epochs=epochs,
+                 model=model,
+                 train_iterator=train_iterator,
+                 dev_iterator=dev_iterator,
+                 test_iterator=test_iterator,
+                 optimizer=optimizer,
+                 criterion=criterion,
+                 device=device,
+                 model_save_name=model_save_name,
+                 accuracy_calculation_function = accuracy_calculation_function,
+                 wandb=wandb,
+                 other_params=other_params
+            )
+        else:
+            best_test_acc, best_valid_acc, test_acc_at_best_valid_acc = basic_training_loop(
+                n_epochs=epochs,
+                model=model,
+                train_iterator=train_iterator,
+                dev_iterator=dev_iterator,
+                test_iterator=test_iterator,
+                optimizer=optimizer,
+                criterion=criterion,
+                device=device,
+                model_save_name=model_save_name,
+                accuracy_calculation_function=accuracy_calculation_function,
+                wandb=wandb,
+                other_params=other_params
+            )
 
         print(f"BEST Test Acc: {best_test_acc} || Actual Test Acc: {test_acc_at_best_valid_acc} || Best Valid Acc {best_valid_acc}")
 
