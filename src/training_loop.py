@@ -613,7 +613,7 @@ def three_phase_training_loop(
     assert is_adv == True
 
     phase = 'initial'
-    is_adv_new = False
+    is_adv_new = True
 
     for epoch in range(n_epochs):
 
