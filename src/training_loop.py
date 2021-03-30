@@ -266,7 +266,7 @@ def train_adv_three_phase_custom(model, iterator, optimizer, criterion, device, 
     epoch_acc_main = 0
     epoch_loss_aux = 0
     epoch_acc_aux = 0
-    print(phase)
+    # print(phase)
 
     for labels, text, lengths, aux in tqdm(iterator):
         labels = labels.to(device)
@@ -286,7 +286,6 @@ def train_adv_three_phase_custom(model, iterator, optimizer, criterion, device, 
             if phase == 'recover':
                 model.freeze_unfreeze_embedder(freeze=True)
 
-            print("inside initial phase")
             # --- train Embedder and Classifier
             optimizer.zero_grad()
             predictions, aux_predictions = model(text, lengths)
@@ -344,7 +343,7 @@ def train_adv_three_phase_custom(model, iterator, optimizer, criterion, device, 
         epoch_loss_aux += loss_aux.item()
         epoch_acc_aux += acc_aux.item()
 
-        return epoch_loss_main/ len(iterator), epoch_loss_aux/ len(iterator), epoch_acc_main/ len(iterator), epoch_acc_aux/ len(iterator)
+    return epoch_loss_main/ len(iterator), epoch_loss_aux/ len(iterator), epoch_acc_main/ len(iterator), epoch_acc_aux/ len(iterator)
 
 
 
@@ -612,12 +611,14 @@ def three_phase_training_loop(
 
     for epoch in range(n_epochs):
 
-        if epoch < int(epoch*.40):
+        if epoch < int(n_epochs*.40):
             phase = 'initial'
-        elif epoch >=int(epoch*.40) and epoch< int(epoch*.80):
+        elif epoch >=int(n_epochs*.40) and epoch< int(n_epochs*.80):
             phase = 'perturbate'
         else:
             phase = 'recover'
+
+        print(f"current phase: {phase}")
 
         start_time = time.monotonic()
         train_loss_main, train_loss_aux, train_acc_main,train_acc_aux  = train_adv_three_phase_custom(  model, train_iterator, optimizer, criterion, device,
