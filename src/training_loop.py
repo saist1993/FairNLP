@@ -287,6 +287,7 @@ def train_adv_three_phase_custom(model, iterator, optimizer, criterion, device, 
                 model.freeze_unfreeze_embedder(freeze=True)
 
             # --- train Embedder and Classifier
+            model.freeze_unfreeze_adv(freeze=True)
             optimizer.zero_grad()
             predictions, aux_predictions = model(text, lengths)
             if is_regression:
@@ -295,10 +296,12 @@ def train_adv_three_phase_custom(model, iterator, optimizer, criterion, device, 
                 loss_main = criterion(predictions, labels)
             loss_main.backward()
             optimizer.step()
+            model.freeze_unfreeze_adv(freeze=False)
             # -- Training ends ---
 
             # -- Train freeze(E) + Adv
             optimizer.zero_grad()
+            model.freeze_unfreeze_classifier(freeze=True)
             model.freeze_unfreeze_embedder(freeze=True)
             predictions, aux_predictions = model(text, lengths)
 
@@ -310,6 +313,7 @@ def train_adv_three_phase_custom(model, iterator, optimizer, criterion, device, 
             loss_aux.backward()
             optimizer.step()
             model.freeze_unfreeze_embedder(freeze=False)
+            model.freeze_unfreeze_classifier(freeze=False)
             # -- Training ends ---
 
 
