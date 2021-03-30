@@ -2,6 +2,7 @@ import time
 import torch
 import numpy as np
 from tqdm.auto import tqdm
+from models import initialize_parameters
 
 def epoch_time(start_time, end_time):
     elapsed_time = end_time - start_time
@@ -612,6 +613,7 @@ def three_phase_training_loop(
     assert is_adv == True
 
     phase = 'initial'
+    is_adv_new = False
 
     for epoch in range(n_epochs):
 
@@ -621,6 +623,9 @@ def three_phase_training_loop(
             phase = 'perturbate'
         else:
             phase = 'recover'
+            if not is_adv_new:
+                model.adv.apply(initialize_parameters)
+                is_adv_new = True
 
         print(f"current phase: {phase}")
 
