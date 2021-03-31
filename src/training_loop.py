@@ -321,6 +321,10 @@ def train_adv_three_phase_custom(model, iterator, optimizer, criterion, device, 
         elif phase == 'perturbate':
             ''' Gradient reversal layer'''
 
+            model.freeze_unfreeze_embedder(freeze=False)
+            model.freeze_unfreeze_classifier(freeze=False)
+            model.freeze_unfreeze_adv(freeze=False)
+
             optimizer.zero_grad()
 
             predictions, aux_predictions = model(text, lengths, gradient_reversal=True)
