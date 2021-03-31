@@ -13,6 +13,13 @@ from typing import List, Callable
 import numpy as np
 import random
 
+torch.manual_seed(1234)
+torch.cuda.manual_seed(1234)
+torch.cuda.manual_seed_all(1234)
+random.seed(1234)
+np.random.seed(1234)
+torch.backends.cudnn.deterministic = True
+torch.backends.cudnn.benchmark = False
 
 from utils import totensor, sequential_transforms, vocab_func, TextClassificationDataset, clean_text_tweet
 
@@ -451,13 +458,7 @@ class BiasinBiosSimpleAdv(WikiSimpleClassification):
 
     def run(self):
 
-        torch.manual_seed(self.seed)
-        torch.cuda.manual_seed(self.seed)
-        torch.cuda.manual_seed_all(self.seed)
-        random.seed(self.seed)
-        np.random.seed(self.seed)
-        torch.backends.cudnn.deterministic = True
-        torch.backends.cudnn.benchmark = False
+
 
         assert self.is_regression == False
 
@@ -467,14 +468,21 @@ class BiasinBiosSimpleAdv(WikiSimpleClassification):
         test = self.read_data("../data/bias_in_bios/test.pickle")[:1000]
 
         # Find all professional. Create a professional to id list
-        all_profession = list(set([t['p'] for t in train]))
-        profession_to_id = {profession:index for index, profession in enumerate(all_profession)}
-        pickle.dump(profession_to_id, open(self.data_dir / Path('profession_to_id.pickle'), "wb"))
+        try:
+            profession_to_id =  pickle.load(open(self.data_dir / Path('profession_to_id.pickle'), "rb"))
+            all_profession = profession_to_id.keys()
+        except:
+            all_profession = list(set([t['p'] for t in train]))
+            profession_to_id = {profession:index for index, profession in enumerate(all_profession)}
+            pickle.dump(profession_to_id, open(self.data_dir / Path('profession_to_id.pickle'), "wb"))
 
         # Find all genders and assign them id
-        all_gender = list(set([t['g'] for t in train]))
-        gender_to_id = {profession:index for index, profession in enumerate(all_gender)}
-        pickle.dump(gender_to_id, open(self.data_dir / Path('gender_to_id.pickle'), "wb"))
+        try:
+            gender_to_id = pickle.load(open(self.data_dir / Path('gender_to_id.pickle'), "rb"))
+        except:
+            all_gender = list(set([t['g'] for t in train]))
+            gender_to_id = {profession:index for index, profession in enumerate(all_gender)}
+            pickle.dump(gender_to_id, open(self.data_dir / Path('gender_to_id.pickle'), "wb"))
 
 
         # Tokenization and id'fying the profession
@@ -505,17 +513,21 @@ class BiasinBiosSimpleAdv(WikiSimpleClassification):
         train_iterator = torch.utils.data.DataLoader(train_data,
                                                      self.batch_size,
                                                      shuffle=True,
-                                                     collate_fn=self.collate)
+                                                     collate_fn=self.collate,
+                                                     worker_init_fn=np.random.seed(1234)
+                                                     )
 
         dev_iterator = torch.utils.data.DataLoader(dev_data,
                                                    self.batch_size,
                                                    shuffle=False,
-                                                   collate_fn=self.collate)
+                                                   collate_fn=self.collate,
+                                                   worker_init_fn=np.random.seed(1234))
 
         test_iterator = torch.utils.data.DataLoader(test_data,
                                                     self.batch_size,
                                                     shuffle=False,
-                                                    collate_fn=self.collate)
+                                                    collate_fn=self.collate,
+                                                    worker_init_fn=np.random.seed(1234))
 
         # number_of_labels = len(list(set(train_data.get_labels())))
 
