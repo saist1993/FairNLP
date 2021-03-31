@@ -463,9 +463,9 @@ class BiasinBiosSimpleAdv(WikiSimpleClassification):
         assert self.is_regression == False
 
 
-        train = self.read_data("../data/bias_in_bios/train.pickle")[:20000]
-        dev = self.read_data("../data/bias_in_bios/dev.pickle")[:1000]
-        test = self.read_data("../data/bias_in_bios/test.pickle")[:1000]
+        train = self.read_data("../data/bias_in_bios/train.pickle")[:500]
+        dev = self.read_data("../data/bias_in_bios/dev.pickle")[:100]
+        test = self.read_data("../data/bias_in_bios/test.pickle")[:100]
 
         # Find all professional. Create a professional to id list
         try:
