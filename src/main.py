@@ -331,7 +331,8 @@ def main(emb_dim:int,
             'loss_aux_scale': adv_loss_scale,
             'is_regression': regression,
             'is_post_hoc': False, # here the post-hoc has to be false
-            'save_model': True
+            'save_model': True,
+            'seed': seed
         }
 
         if is_adv:
