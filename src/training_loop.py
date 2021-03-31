@@ -634,7 +634,7 @@ def three_phase_training_loop(
         print(f"current phase: {phase}")
 
         start_time = time.monotonic()
-        train_loss_main, train_loss_aux, train_acc_main,train_acc_aux  = train_adv_three_phase_custom(model, train_iterator, optimizer, criterion, device,
+        train_loss_main, train_loss_aux, train_acc_main,train_acc_aux  = train_adv_three_phase(model, train_iterator, optimizer, criterion, device,
                                           accuracy_calculation_function, phase, other_params)
         valid_total_loss, valid_loss_main, valid_acc_main, valid_loss_aux, valid_acc_aux = evaluate_adv(model, dev_iterator, criterion, device, accuracy_calculation_function,
                                              other_params)
