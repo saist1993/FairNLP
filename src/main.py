@@ -179,6 +179,7 @@ def main(emb_dim:int,
         raise CustomError("no config file selected")
     print(f"seed is {seed}")
     torch.manual_seed(seed)
+    torch.cuda.manual_seed(seed)
     random.seed(seed)
     np.random.seed(seed)
     torch.backends.cudnn.deterministic = True
