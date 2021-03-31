@@ -251,7 +251,7 @@ def train_adv_three_phase(model, iterator, optimizer, criterion, device, accurac
         epoch_loss_aux += loss_aux.item()
         epoch_acc_aux += acc_aux.item()
 
-        return epoch_loss_main/ len(iterator), epoch_loss_aux/ len(iterator), epoch_acc_main/ len(iterator), epoch_acc_aux/ len(iterator)
+    return epoch_loss_main/ len(iterator), epoch_loss_aux/ len(iterator), epoch_acc_main/ len(iterator), epoch_acc_aux/ len(iterator)
 
 
 
