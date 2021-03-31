@@ -14,6 +14,7 @@ import scipy
 import random
 import gensim
 import pickle
+import numpy as np
 from pathlib import Path
 from tqdm.auto import tqdm
 from typing import Optional, Callable, List
@@ -179,6 +180,7 @@ def main(emb_dim:int,
     print(f"seed is {seed}")
     torch.manual_seed(seed)
     random.seed(seed)
+    np.random.seed(seed)
     torch.backends.cudnn.deterministic = True
     torch.backends.cudnn.benchmark = False
     device = resolve_device() # if cuda: then cuda else cpu
