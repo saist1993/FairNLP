@@ -242,7 +242,7 @@ def train_adv_three_phase(model, iterator, optimizer, criterion, device, accurac
             loss_aux = torch.zeros(1)
 
         acc_main = accuracy_calculation_function(predictions, labels)
-        acc_aux = accuracy_calculation_function(predictions, aux)
+        acc_aux = accuracy_calculation_function(aux_predictions, aux)
 
         # now we have acc_main, acc_aux, loss_main, loss_aux .. Log this
 
