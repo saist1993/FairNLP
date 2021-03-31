@@ -513,21 +513,20 @@ class BiasinBiosSimpleAdv(WikiSimpleClassification):
         train_iterator = torch.utils.data.DataLoader(train_data,
                                                      self.batch_size,
                                                      shuffle=True,
-                                                     collate_fn=self.collate,
-                                                     worker_init_fn=np.random.seed(1234)
+                                                     collate_fn=self.collate
                                                      )
 
         dev_iterator = torch.utils.data.DataLoader(dev_data,
                                                    self.batch_size,
                                                    shuffle=False,
-                                                   collate_fn=self.collate,
-                                                   worker_init_fn=np.random.seed(1234))
+                                                   collate_fn=self.collate
+                                                   )
 
         test_iterator = torch.utils.data.DataLoader(test_data,
                                                     self.batch_size,
                                                     shuffle=False,
-                                                    collate_fn=self.collate,
-                                                    worker_init_fn=np.random.seed(1234))
+                                                    collate_fn=self.collate
+                                                    )
 
         # number_of_labels = len(list(set(train_data.get_labels())))
 
