@@ -10,6 +10,9 @@ from pathlib import Path
 from string import Template
 from typing import List, Callable
 
+import numpy as np
+import random
+
 
 from utils import totensor, sequential_transforms, vocab_func, TextClassificationDataset, clean_text_tweet
 
@@ -32,6 +35,10 @@ class WikiSimpleClassification:
         self.is_regression = params['is_regression']
         self.pad_idx = -1 # this gets updated in the run function once the vocab is made.
         self.vocab = params['vocab'] # while training set this to be None
+        try:
+            self.seed = params['seed']
+        except:
+            self.seed = 1234
 
     def transform_dataframe_to_dict(self, data_frame:pd, tokenizer:Callable):
         """
@@ -226,6 +233,8 @@ class ValencePrediction(WikiSimpleClassification):
         return new_data
 
     def run(self):
+
+
         train = self.read_data(self.data_dir, 'train')
 
         dev = self.read_data(self.data_dir, 'dev')
@@ -441,6 +450,14 @@ class BiasinBiosSimpleAdv(WikiSimpleClassification):
 
 
     def run(self):
+
+        torch.manual_seed(self.seed)
+        torch.cuda.manual_seed(self.seed)
+        torch.cuda.manual_seed_all(self.seed)
+        random.seed(self.seed)
+        np.random.seed(self.seed)
+        torch.backends.cudnn.deterministic = True
+        torch.backends.cudnn.benchmark = False
 
         assert self.is_regression == False
 
