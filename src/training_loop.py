@@ -284,9 +284,10 @@ def train_adv_three_phase_custom(model, iterator, optimizer, criterion, device, 
                 Train Freeze (Embedder) + Adv
             """
             #
-            # if phase == 'recover':
-            #     model.freeze_unfreeze_embedder(freeze=True)
+            if phase == 'recover':
+                model.freeze_unfreeze_embedder(freeze=True)
 
+            model.freeze_unfreeze_embedder(freeze=True)
             # --- train Embedder and Classifier
             model.freeze_unfreeze_adv(freeze=True)
             optimizer.zero_grad()
