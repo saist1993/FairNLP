@@ -17,6 +17,8 @@ import pickle
 import numpy as np
 from pathlib import Path
 from tqdm.auto import tqdm
+from functools import partial
+from mytorch.utils.goodies import *
 from typing import Optional, Callable, List
 
 
@@ -309,8 +311,9 @@ def main(emb_dim:int,
     model = model.to(device)
 
     # setting up optimizer
-    optimizer = optim.Adam(model.parameters([param for param in model.parameters() if param.requires_grad == True]), lr=0.01)
-
+    # optimizer = optim.Adam(model.parameters([param for param in model.parameters() if param.requires_grad == True]), lr=0.01)
+    opt_fn = partial(torch.optim.Adam)
+    optimizer = make_opt(model, opt_fn, lr=0.01)
     # setting up loss function
     if number_of_labels == 1:
         criterion = nn.MSELoss()
