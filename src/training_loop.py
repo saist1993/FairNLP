@@ -2,6 +2,7 @@ import time
 import torch
 import numpy as np
 from tqdm.auto import tqdm
+from typing import List, Union
 from models import initialize_parameters
 
 def epoch_time(start_time, end_time):
@@ -254,8 +255,11 @@ def train_adv_three_phase(model, iterator, optimizer, criterion, device, accurac
     return epoch_loss_main/ len(iterator), epoch_loss_aux/ len(iterator), epoch_acc_main/ len(iterator), epoch_acc_aux/ len(iterator)
 
 
+def freeze(opt: torch.optim, layer: str, model: torch.nn.Module):
+    opt.param_groups[model.legend[layer]]['lr'] = 0
 
-
+def unfreeze(opt: torch.optim, layer: int, lr, model: torch.nn.Module):
+    opt.param_groups[model.legend[layer]]['lr'] = lr
 
 def train_adv_three_phase_custom(model, iterator, optimizer, criterion, device, accuracy_calculation_function, phase, other_params):
 
@@ -284,28 +288,36 @@ def train_adv_three_phase_custom(model, iterator, optimizer, criterion, device, 
                 Train Freeze (Embedder) + Adv
             """
             #
-            # if phase == 'recover':
-            #     model.freeze_unfreeze_embedder(freeze=True)
+            if phase == 'recover':
+                freeze(optimizer, model=model, layer='encoder')
+                # model.freeze_unfreeze_embedder(freeze=True)
 
-            # model.freeze_unfreeze_embedder(freeze=True)
             # --- train Embedder and Classifier
-            model.freeze_unfreeze_adv(freeze=True)
+            # model.freeze_unfreeze_adv(freeze=True)
+            freeze(optimizer, model=model, layer='adversary')
             optimizer.zero_grad()
-            predictions, aux_predictions = model(text, lengths)
+            predictions, aux_predictions1 = model(text, lengths)
             if is_regression:
                 loss_main = criterion(predictions.squeeze(), labels.squeeze())
             else:
                 loss_main = criterion(predictions, labels)
             loss_main.backward()
             optimizer.step()
-            model.freeze_unfreeze_adv(freeze=False)
+            # model.freeze_unfreeze_adv(freeze=False)
+            unfreeze(optimizer, model=model, layer='adversary', lr=0.01)
             # -- Training ends ---
 
             # -- Train freeze(E) + Adv
-            # optimizer.zero_grad()
-            model.freeze_unfreeze_classifier(freeze=True)
-            model.freeze_unfreeze_embedder(freeze=True)
+            optimizer.zero_grad()
+            # model.freeze_unfreeze_classifier(freeze=True)
+            # model.freeze_unfreeze_embedder(freeze=True)
+            freeze(optimizer, model=model, layer='encoder')
+            freeze(optimizer, model=model, layer='classifier')
             predictions, aux_predictions = model(text, lengths)
+
+            if phase == 'recover':
+                if not torch.equal(torch.argmax(aux_predictions1, dim=1) , torch.argmax(aux_predictions, dim=1)):
+                    print("something wrong")
 
             if is_regression:
                 loss_aux = criterion(aux_predictions.squeeze(), aux.squeeze())
@@ -314,8 +326,10 @@ def train_adv_three_phase_custom(model, iterator, optimizer, criterion, device, 
 
             loss_aux.backward()
             optimizer.step()
-            model.freeze_unfreeze_embedder(freeze=False)
-            model.freeze_unfreeze_classifier(freeze=False)
+            # model.freeze_unfreeze_embedder(freeze=False)
+            # model.freeze_unfreeze_classifier(freeze=False)
+            unfreeze(optimizer, model=model, layer='encoder', lr=0.01)
+            unfreeze(optimizer, model=model, layer='classifier', lr=0.01)
             # -- Training ends ---
 
 
@@ -632,6 +646,7 @@ def three_phase_training_loop(
                 model.adv.apply(initialize_parameters)
                 is_adv_new = True
 
+        phase = 'recover'
         print(f"current phase: {phase}")
 
         start_time = time.monotonic()

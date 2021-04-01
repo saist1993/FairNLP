@@ -159,7 +159,8 @@ class DomainAdv(nn.Module):
     def forward(self, x):
         for index, layer in enumerate(self.fc_layers):
             if len(self.fc_layers)-1 != index:
-                x = func.relu(self.dropout(layer(x)))
+                # x = func.relu(self.dropout(layer(x)))
+                x = func.relu(layer(x))
             else:
                 x = layer(x)
         return x
@@ -320,7 +321,8 @@ class EmbedderLSTM(nn.Module):
         # text = [seq len, batch size]
         # lengths = [batch size]
 
-        embedded = self.dropout(self.embedding(text))
+        # embedded = self.dropout(self.embedding(text))
+        embedded = self.embedding(text)
 
         # embedded = [seq len, batch size, emb dim]
 
@@ -361,6 +363,13 @@ class BiLSTMAdvWithFreeze(nn.Module):
         self.eps = model_params['eps']
         self.learnable_embeddings = model_params['learnable_embeddings']
 
+        self.legend = {
+            'embedding': 0,
+            'encoder': 1,
+            'classifier': 2,
+            'adversary': 3
+        }
+
         try:
             self.return_hidden = model_params['return_hidden']
         except KeyError:
@@ -374,7 +383,6 @@ class BiLSTMAdvWithFreeze(nn.Module):
         self.adv.apply(initialize_parameters) # don't know, if this is needed.
         self.classifier.apply(initialize_parameters)  # don't know, if this is needed.
         self.embedder.apply(initialize_parameters)  # don't know, if this is needed.
-
 
     def freeze_unfreeze_adv(self, freeze=True):
         if freeze:
@@ -402,6 +410,10 @@ class BiLSTMAdvWithFreeze(nn.Module):
             if not self.learnable_embeddings:
                 self.embedder.embedding.weight.requires_grad = False
 
+    @property
+    def layers(self):
+        return torch.nn.ModuleList([self.embedder.embedding, torch.nn.ModuleList([self.embedder.lstm, self.embedder.dropout]),
+                                   self.classifier, self.adv])
 
     def forward(self, text, lengths, gradient_reversal=False):
         # text = [seq len, batch size]
