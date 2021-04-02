@@ -393,7 +393,8 @@ def main(emb_dim:int,
 
         # step 1 -> load the main model
         if is_adv:
-            model = BiLSTMAdv(model_params)
+            # model = BiLSTMAdv(model_params)
+            model = BiLSTMAdvWithFreeze(model_params)
         else:
             model = BiLSTM(model_params)
         model.load_state_dict(torch.load(model_save_name))
