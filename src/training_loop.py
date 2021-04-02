@@ -649,7 +649,7 @@ def three_phase_training_loop(
                 model.adv.apply(initialize_parameters)
                 is_adv_new = True
 
-        phase = 'initial'
+        # phase = 'initial'
         print(f"current phase: {phase}")
 
         start_time = time.monotonic()
