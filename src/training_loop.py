@@ -339,6 +339,9 @@ def train_adv_three_phase_custom(model, iterator, optimizer, criterion, device, 
             # model.freeze_unfreeze_embedder(freeze=False)
             # model.freeze_unfreeze_classifier(freeze=False)
             # model.freeze_unfreeze_adv(freeze=False)
+            unfreeze(optimizer, model=model, layer='encoder', lr=0.01)
+            unfreeze(optimizer, model=model, layer='classifier', lr=0.01)
+            unfreeze(optimizer, model=model, layer='adversary', lr=0.01)
 
             optimizer.zero_grad()
 
