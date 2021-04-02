@@ -376,7 +376,7 @@ class BiLSTMAdvWithFreeze(nn.Module):
             self.return_hidden = False
 
         self.embedder = EmbedderLSTM(model_params)
-        self.adv = DomainAdv(number_of_layers=4, input_dim=2*hid_dim,
+        self.adv = DomainAdv(number_of_layers=2, input_dim=2*hid_dim,
                              hidden_dim=hid_dim, output_dim=2, dropout=adv_dropout)
         self.classifier = DomainAdv(number_of_layers=4, input_dim=2 * hid_dim,
                              hidden_dim=hid_dim, output_dim=output_dim, dropout=adv_dropout)
