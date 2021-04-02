@@ -315,9 +315,9 @@ def train_adv_three_phase_custom(model, iterator, optimizer, criterion, device, 
             freeze(optimizer, model=model, layer='classifier')
             predictions, aux_predictions = model(text, lengths)
 
-            if phase == 'recover':
-                if not torch.equal(torch.argmax(aux_predictions1, dim=1) , torch.argmax(aux_predictions, dim=1)):
-                    print("something wrong")
+            # if phase == 'recover':
+            #     if not torch.equal(torch.argmax(aux_predictions1, dim=1) , torch.argmax(aux_predictions, dim=1)):
+            #         print("something wrong")
 
             if is_regression:
                 loss_aux = criterion(aux_predictions.squeeze(), aux.squeeze())
@@ -335,10 +335,10 @@ def train_adv_three_phase_custom(model, iterator, optimizer, criterion, device, 
 
         elif phase == 'perturbate':
             ''' Gradient reversal layer'''
-
-            model.freeze_unfreeze_embedder(freeze=False)
-            model.freeze_unfreeze_classifier(freeze=False)
-            model.freeze_unfreeze_adv(freeze=False)
+            #
+            # model.freeze_unfreeze_embedder(freeze=False)
+            # model.freeze_unfreeze_classifier(freeze=False)
+            # model.freeze_unfreeze_adv(freeze=False)
 
             optimizer.zero_grad()
 
