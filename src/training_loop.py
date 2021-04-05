@@ -646,16 +646,22 @@ def three_phase_training_loop(
 
     assert is_adv == True
     is_adv_new = False
+    current_scale = 0
 
-    # phase = 'initial'
-    if mode_of_loss_scale == 'constant':
-        interval_increase = 0.0
-        current_scale = other_params['loss_aux_scale']
-    elif mode_of_loss_scale == 'linear':
-        interval_increase = other_params['loss_aux_scale']*1.0/(int(n_epochs*.60) - int(n_epochs*.30))
-        current_scale = 0
-        print(interval_increase)
+    total_epochs_in_perturbation = float(int(n_epochs * .60) - int(n_epochs * .30))
+    def get_current_scale(epoch_number, perturbate_epoch_number, last_scale):
+        if mode_of_loss_scale == 'constant':
+            current_scale = other_params['loss_aux_scale']
+            return current_scale
+        if mode_of_loss_scale == 'linear':
+            current_scale = last_scale + other_params['loss_aux_scale']*1.0/total_epochs_in_perturbation
+            return current_scale
+        if mode_of_loss_scale == 'exp':
+            p_i = perturbate_epoch_number / total_epochs_in_perturbation
+            current_scale = float(other_params['loss_aux_scale'] * (2.0 / (1.0 + np.exp(-10 * p_i)) - 1.0))
+            return current_scale
 
+    perturbate_epoch_number = 0
 
     for epoch in range(n_epochs):
 
@@ -667,9 +673,9 @@ def three_phase_training_loop(
                 phase = 'initial'
             elif epoch >=int(n_epochs*.30) and epoch< int(n_epochs*.60):
                 phase = 'perturbate'
-                current_scale = current_scale + interval_increase
-                other_params['loss_aux_scale'] = current_scale
-                print(interval_increase, current_scale)
+                perturbate_epoch_number = perturbate_epoch_number + 1
+                current_scale = get_current_scale(epoch_number = epoch, perturbate_epoch_number=perturbate_epoch_number, last_scale = current_scale)
+                print(f"epoch: {epoch}: {current_scale}")
             else:
                 phase = 'recover'
                 if not is_adv_new:
