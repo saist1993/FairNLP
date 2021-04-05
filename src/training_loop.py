@@ -639,10 +639,22 @@ def three_phase_training_loop(
     except KeyError:
         only_perturbate = False
 
+    try:
+        mode_of_loss_scale = other_params['mode_of_loss_scale']
+    except:
+        mode_of_loss_scale = 'constant'
+
     assert is_adv == True
+    is_adv_new = False
 
     # phase = 'initial'
-    is_adv_new = False
+    if mode_of_loss_scale == 'constant':
+        interval_increase = 0
+        current_scale = other_params['loss_aux_scale']
+    elif mode_of_loss_scale == 'linear':
+        interval_increase = other_params['loss_aux_scale']/(int(n_epochs*.60) - int(n_epochs*.30))
+        current_scale = 0
+
 
     for epoch in range(n_epochs):
 
@@ -654,6 +666,8 @@ def three_phase_training_loop(
                 phase = 'initial'
             elif epoch >=int(n_epochs*.30) and epoch< int(n_epochs*.60):
                 phase = 'perturbate'
+                current_scale = current_scale + interval_increase
+                other_params['loss_aux_scale'] = current_scale
             else:
                 phase = 'recover'
                 if not is_adv_new:

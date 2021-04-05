@@ -417,7 +417,8 @@ def main(emb_dim:int,
             'loss_aux_scale': adv_loss_scale,
             'is_regression': regression,
             'is_post_hoc': True, # here the post-hoc has to be false
-            'save_model': False
+            'save_model': False,
+            'mode_of_loss_scale': 'constant'
         }
 
         best_test_acc, best_valid_acc, test_acc_at_best_valid_acc = basic_training_loop(
