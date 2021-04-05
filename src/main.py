@@ -340,7 +340,8 @@ def main(emb_dim:int,
             'is_post_hoc': False, # here the post-hoc has to be false
             'save_model': True,
             'seed': seed,
-            'only_perturbate':only_perturbate
+            'only_perturbate':only_perturbate,
+            'mode_of_loss_scale': mode_of_loss_scale
         }
 
         if is_adv:
