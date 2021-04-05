@@ -668,6 +668,7 @@ def three_phase_training_loop(
                 phase = 'perturbate'
                 current_scale = current_scale + interval_increase
                 other_params['loss_aux_scale'] = current_scale
+                print(current_scale)
             else:
                 phase = 'recover'
                 if not is_adv_new:
