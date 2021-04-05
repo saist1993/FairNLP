@@ -564,6 +564,7 @@ def basic_training_loop(
                     })
 
 
+
         else:
             train_loss, train_acc = train(model, train_iterator, optimizer, criterion, device, accuracy_calculation_function, other_params)
             valid_loss, valid_acc = evaluate(model, dev_iterator, criterion, device, accuracy_calculation_function, other_params)
@@ -602,6 +603,7 @@ def basic_training_loop(
                     'test_acc': test_acc
                 })
 
+
     return best_test_acc, best_valid_acc, test_acc_at_best_valid_acc
 
 
@@ -632,6 +634,11 @@ def three_phase_training_loop(
     except KeyError:
         is_post_hoc = False
 
+    try:
+        only_perturbate = other_params['only_perturbate'] # corresponds to regular training with peturbation.
+    except KeyError:
+        only_perturbate = False
+
     assert is_adv == True
 
     # phase = 'initial'
@@ -639,17 +646,21 @@ def three_phase_training_loop(
 
     for epoch in range(n_epochs):
 
-        if epoch < int(n_epochs*.30):
-            phase = 'initial'
-        elif epoch >=int(n_epochs*.30) and epoch< int(n_epochs*.60):
+
+        if only_perturbate:
             phase = 'perturbate'
         else:
-            phase = 'recover'
-            if not is_adv_new:
-                model.adv.apply(initialize_parameters)
-                is_adv_new = True
+            if epoch < int(n_epochs*.30):
+                phase = 'initial'
+            elif epoch >=int(n_epochs*.30) and epoch< int(n_epochs*.60):
+                phase = 'perturbate'
+            else:
+                phase = 'recover'
+                if not is_adv_new:
+                    model.adv.apply(initialize_parameters)
+                    is_adv_new = True
 
-        phase = 'perturbate'
+
         print(f"current phase: {phase}")
 
         start_time = time.monotonic()
@@ -712,6 +723,9 @@ def three_phase_training_loop(
                 'epoch': epoch
             })
 
-
+    if not only_perturbate:
+        # It is a three phase trainign loop. And there is no easy criteria to fixate upon. Thus saving at the last epoch
+        print(f"model saved as: {model_save_name}")
+        torch.save(model.state_dict(), model_save_name)
 
     return best_test_acc, best_valid_acc, test_acc_at_best_valid_acc

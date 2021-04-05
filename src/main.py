@@ -132,6 +132,7 @@ def get_pretrained_embedding(initial_embedding, pretrained_vectors, vocab, devic
 @click.option('-use_wandb', '--use_wandb', type=bool, default=False, help="make sure the project is configured to use wandb")
 @click.option('-config_dict', '--config_dict', type=str, default="simple", help="which config to use")
 @click.option('-experiment_name', '--experiment_name', type=str, default="NA", help="name of group of experiment")
+@click.option('-only_perturbate', '--only_perturbate', type=bool, default=False, help="If True; only trains on perturbate phase. Like a vanilla DAAN")
 
 def main(emb_dim:int,
          spacy_model:str,
@@ -161,7 +162,8 @@ def main(emb_dim:int,
          train_main_model:bool,
          use_wandb:bool,
          config_dict:str,
-         experiment_name:str):
+         experiment_name:str,
+         only_perturbate:bool):
 
     if use_wandb:
         import wandb
@@ -335,7 +337,8 @@ def main(emb_dim:int,
             'is_regression': regression,
             'is_post_hoc': False, # here the post-hoc has to be false
             'save_model': True,
-            'seed': seed
+            'seed': seed,
+            'only_perturbate':only_perturbate
         }
 
         if is_adv:
