@@ -195,7 +195,7 @@ def train_adv_three_phase(model, iterator, optimizer, criterion, device, accurac
 
 
         if phase == 'initial' or phase == 'perturbate':
-            # optimizer.zero_grad()
+            optimizer.zero_grad()
             freeze(optimizer, model=model, layer='encoder')
             predictions, aux_predictions = model(text, lengths)
 
