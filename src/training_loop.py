@@ -166,7 +166,6 @@ def train_adv_three_phase(model, iterator, optimizer, criterion, device, accurac
                 Train Embedder + Classifier for one batch
                 Train Freeze(Embedder) + Adv for one batch
             """
-            print("inside initial phase")
             freeze(optimizer, model=model, layer='adversary')
             optimizer.zero_grad()
             predictions, aux_predictions = model(text, lengths)
