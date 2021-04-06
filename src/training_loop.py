@@ -167,7 +167,7 @@ def train_adv_three_phase(model, iterator, optimizer, criterion, device, accurac
                 Train Freeze(Embedder) + Adv for one batch
             """
             print("inside initial phase")
-
+            freeze(optimizer, model=model, layer='adversary')
             optimizer.zero_grad()
             predictions, aux_predictions = model(text, lengths)
             if is_regression:
@@ -177,10 +177,11 @@ def train_adv_three_phase(model, iterator, optimizer, criterion, device, accurac
 
             loss_main.backward()
             optimizer.step()
+            unfreeze(optimizer, model=model, layer='adversary', lr=0.01)
 
         elif phase == 'perturbate' or phase == 'recover':
             optimizer.zero_grad()
-            model.freeze_unfreeze_embedder(freeze=True)
+            freeze(optimizer, model=model, layer='encoder')
 
             predictions, aux_predictions = model(text, lengths)
             if is_regression:
@@ -190,13 +191,13 @@ def train_adv_three_phase(model, iterator, optimizer, criterion, device, accurac
 
             loss_main.backward()
             optimizer.step()
-            model.freeze_unfreeze_embedder(freeze=False)
+            unfreeze(optimizer, model=model, layer='encoder', lr=0.01)
 
 
 
         if phase == 'initial' or phase == 'perturbate':
             # optimizer.zero_grad()
-            model.freeze_unfreeze_embedder(freeze=True)
+            freeze(optimizer, model=model, layer='encoder')
             predictions, aux_predictions = model(text, lengths)
 
             if is_regression:
@@ -206,11 +207,11 @@ def train_adv_three_phase(model, iterator, optimizer, criterion, device, accurac
 
             loss_aux.backward()
             optimizer.step()
-            model.freeze_unfreeze_embedder(freeze=False)
+            unfreeze(optimizer, model=model, layer='encoder', lr=0.01)
 
         elif phase == 'recover':
             optimizer.zero_grad()
-            model.freeze_unfreeze_embedder(freeze=True)
+            freeze(optimizer, model=model, layer='encoder')
             predictions, aux_predictions = model(text, lengths)
 
             if is_regression:
@@ -220,11 +221,11 @@ def train_adv_three_phase(model, iterator, optimizer, criterion, device, accurac
 
             loss_aux.backward()
             optimizer.step()
-            model.freeze_unfreeze_embedder(freeze=False)
+            unfreeze(optimizer, model=model, layer='encoder', lr=0.01)
 
         if phase == 'perturbate':
-            model.freeze_unfreeze_classifier(freeze=True)
-            model.freeze_unfreeze_adv(freeze=True)
+            freeze(optimizer, model=model, layer='adversary')
+            freeze(optimizer, model=model, layer='classifier')
             optimizer.zero_grad()
             predictions, aux_predictions = model(text, lengths)
             if is_regression:
@@ -236,8 +237,8 @@ def train_adv_three_phase(model, iterator, optimizer, criterion, device, accurac
             loss_main = loss_main - (loss_aux_scale * loss_aux)
             loss_main.backward()
             optimizer.step()
-            model.freeze_unfreeze_classifier(freeze=False)
-            model.freeze_unfreeze_adv(freeze=False)
+            unfreeze(optimizer, model=model, layer='classifier', lr=0.01)
+            unfreeze(optimizer, model=model, layer='adversary', lr=0.01)
 
         if phase != 'recover':
             loss_aux = torch.zeros(1)
@@ -686,7 +687,7 @@ def three_phase_training_loop(
         print(f"current phase: {phase}")
 
         start_time = time.monotonic()
-        train_loss_main, train_loss_aux, train_acc_main,train_acc_aux  = train_adv_three_phase_custom(model, train_iterator, optimizer, criterion, device,
+        train_loss_main, train_loss_aux, train_acc_main,train_acc_aux  = train_adv_three_phase(model, train_iterator, optimizer, criterion, device,
                                           accuracy_calculation_function, phase, other_params)
         valid_total_loss, valid_loss_main, valid_acc_main, valid_loss_aux, valid_acc_aux = evaluate_adv(model, dev_iterator, criterion, device, accuracy_calculation_function,
                                              other_params)
