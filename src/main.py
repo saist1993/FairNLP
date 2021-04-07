@@ -134,6 +134,7 @@ def get_pretrained_embedding(initial_embedding, pretrained_vectors, vocab, devic
 @click.option('-experiment_name', '--experiment_name', type=str, default="NA", help="name of group of experiment")
 @click.option('-only_perturbate', '--only_perturbate', type=bool, default=False, help="If True; only trains on perturbate phase. Like a vanilla DAAN")
 @click.option('-mode_of_loss_scale', '--mode_of_loss_scale', type=str, default="constant", help="constant/linear. The way adv loss scale to be increased with epochs during gradient reversal mode.")
+@click.option('-training_loop_type', '--training_loop_type', type=str, default="three_phase_custom", help="three_phase/three_phase_custom are the two options. Only works with is_adv true")
 
 def main(emb_dim:int,
          spacy_model:str,
@@ -165,7 +166,8 @@ def main(emb_dim:int,
          config_dict:str,
          experiment_name:str,
          only_perturbate:bool,
-         mode_of_loss_scale:str):
+         mode_of_loss_scale:str,
+         training_loop_type:str):
 
     if use_wandb:
         import wandb
@@ -341,7 +343,8 @@ def main(emb_dim:int,
             'save_model': True,
             'seed': seed,
             'only_perturbate':only_perturbate,
-            'mode_of_loss_scale': mode_of_loss_scale
+            'mode_of_loss_scale': mode_of_loss_scale,
+            'training_loop_type': training_loop_type
         }
 
         if is_adv:
@@ -421,7 +424,8 @@ def main(emb_dim:int,
             'is_regression': regression,
             'is_post_hoc': True, # here the post-hoc has to be false
             'save_model': False,
-            'mode_of_loss_scale': mode_of_loss_scale
+            'mode_of_loss_scale': mode_of_loss_scale,
+
         }
 
         best_test_acc, best_valid_acc, test_acc_at_best_valid_acc = basic_training_loop(

@@ -5,6 +5,10 @@ from tqdm.auto import tqdm
 from typing import List, Union
 from models import initialize_parameters
 
+
+# custom imports
+from utils import CustomError
+
 def epoch_time(start_time, end_time):
     elapsed_time = end_time - start_time
     elapsed_mins = int(elapsed_time / 60)
@@ -644,6 +648,10 @@ def three_phase_training_loop(
     except:
         mode_of_loss_scale = 'constant'
 
+    try:
+        training_loop_type= other_params['training_loop_type']
+    except KeyError:
+        training_loop_type = 'three_phase'
     assert is_adv == True
     is_adv_new = False
     current_scale = 0
@@ -686,8 +694,20 @@ def three_phase_training_loop(
         print(f"current phase: {phase}")
 
         start_time = time.monotonic()
-        train_loss_main, train_loss_aux, train_acc_main,train_acc_aux  = train_adv_three_phase(model, train_iterator, optimizer, criterion, device,
-                                          accuracy_calculation_function, phase, other_params)
+        if training_loop_type == 'three_phase':
+            print(f"in three phase: training loop type is {training_loop_type}")
+            train_loss_main, train_loss_aux, train_acc_main,train_acc_aux  = train_adv_three_phase(model, train_iterator, optimizer, criterion, device,
+                                              accuracy_calculation_function, phase, other_params)
+        elif training_loop_type == 'three_phase_custom':
+            print(f"in three phase custom: training loop type is {training_loop_type}")
+            train_loss_main, train_loss_aux, train_acc_main, train_acc_aux = train_adv_three_phase_custom(model,
+                                                                                                   train_iterator,
+                                                                                                   optimizer, criterion,
+                                                                                                   device,
+                                                                                                   accuracy_calculation_function,
+                                                                                                   phase, other_params)
+        else:
+            raise CustomError('The training loop type is incorrect.')
         valid_total_loss, valid_loss_main, valid_acc_main, valid_loss_aux, valid_acc_aux = evaluate_adv(model, dev_iterator, criterion, device, accuracy_calculation_function,
                                              other_params)
         test_total_loss, test_loss_main, test_acc_main, test_loss_aux, test_acc_aux = evaluate_adv(model, test_iterator, criterion, device, accuracy_calculation_function,
