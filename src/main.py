@@ -168,7 +168,7 @@ def main(emb_dim:int,
          only_perturbate:bool,
          mode_of_loss_scale:str,
          training_loop_type:str):
-
+    print("quoate for commit")
     if use_wandb:
         import wandb
         wandb.init(project='bias_in_nlp', entity='magnet', config = click.get_current_context().params)
