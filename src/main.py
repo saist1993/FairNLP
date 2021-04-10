@@ -135,6 +135,9 @@ def get_pretrained_embedding(initial_embedding, pretrained_vectors, vocab, devic
 @click.option('-only_perturbate', '--only_perturbate', type=bool, default=False, help="If True; only trains on perturbate phase. Like a vanilla DAAN")
 @click.option('-mode_of_loss_scale', '--mode_of_loss_scale', type=str, default="constant", help="constant/linear. The way adv loss scale to be increased with epochs during gradient reversal mode.")
 @click.option('-training_loop_type', '--training_loop_type', type=str, default="three_phase_custom", help="three_phase/three_phase_custom are the two options. Only works with is_adv true")
+@click.option('-hidden_loss', '--hidden_loss', type=bool, default=False, help="if true model return hidden. Generally used in case of adding a L1/L2 regularization over hidden")
+@click.option('-hidden_l1_scale', '--hidden_l1_scale', type=int, default=0.5, help="scaling l1 loss over hidden")
+@click.option('-hidden_l2_scale', '--hidden_l2_scale', type=int, default=0.5, help="scaling l2 loss over hidden")
 
 def main(emb_dim:int,
          spacy_model:str,
@@ -167,8 +170,10 @@ def main(emb_dim:int,
          experiment_name:str,
          only_perturbate:bool,
          mode_of_loss_scale:str,
-         training_loop_type:str):
-    print("quoate for commit")
+         training_loop_type:str,
+         hidden_loss:bool,
+         hidden_l1_scale:int,
+         hidden_l2_scale:int):
     if use_wandb:
         import wandb
         wandb.init(project='bias_in_nlp', entity='magnet', config = click.get_current_context().params)
@@ -250,7 +255,8 @@ def main(emb_dim:int,
             'device': device,
             'noise_layer': noise_layer,
             'eps': eps,
-            'learnable_embeddings': learnable_embeddings
+            'learnable_embeddings': learnable_embeddings,
+            'return_hidden': hidden_loss
         }
         if is_adv:
             # model = BiLSTMAdv(model_params)
@@ -317,9 +323,13 @@ def main(emb_dim:int,
     model = model.to(device)
 
     # setting up optimizer
+    if is_adv:
     # optimizer = optim.Adam(model.parameters([param for param in model.parameters() if param.requires_grad == True]), lr=0.01)
-    opt_fn = partial(torch.optim.Adam)
-    optimizer = make_opt(model, opt_fn, lr=0.01)
+        opt_fn = partial(torch.optim.Adam)
+        optimizer = make_opt(model, opt_fn, lr=0.01)
+    else:
+        optimizer = optim.Adam(model.parameters([param for param in model.parameters() if param.requires_grad == True]),
+                               lr=0.01)
     # setting up loss function
     if number_of_labels == 1:
         criterion = nn.MSELoss()
@@ -344,7 +354,10 @@ def main(emb_dim:int,
             'seed': seed,
             'only_perturbate':only_perturbate,
             'mode_of_loss_scale': mode_of_loss_scale,
-            'training_loop_type': training_loop_type
+            'training_loop_type': training_loop_type,
+            'hidden_l1_scale': hidden_l1_scale,
+            'hidden_l2_scale': hidden_l2_scale,
+            'return_hidden': hidden_loss
         }
 
         if is_adv:
@@ -398,7 +411,7 @@ def main(emb_dim:int,
             is_adv = True
             adv_loss_scale = 0.0
 
-        model_params['return_hidden'] = True
+        # model_params['return_hidden'] = True
 
         # step 1 -> load the main model
         if is_adv:
@@ -425,7 +438,7 @@ def main(emb_dim:int,
             'is_post_hoc': True, # here the post-hoc has to be false
             'save_model': False,
             'mode_of_loss_scale': mode_of_loss_scale,
-
+            'return_hidden': False
         }
 
         best_test_acc, best_valid_acc, test_acc_at_best_valid_acc = basic_training_loop(

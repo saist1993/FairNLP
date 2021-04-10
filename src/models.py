@@ -99,13 +99,23 @@ class BiLSTM(nn.Module):
         n_layers = model_params['n_layers']
         dropout = model_params['dropout']
         pad_idx = model_params['pad_idx']
+        self.device = model_params['device']
+        try:
+            self.noise_layer = model_params['noise_layer']
+        except KeyError:
+            self.noise_layer = False
+
+        try:
+            self.eps = model_params['eps']
+        except KeyError:
+            self.eps = False
 
         self.embedding = nn.Embedding(input_dim, emb_dim, padding_idx=pad_idx)
         self.lstm = nn.LSTM(emb_dim, hid_dim, num_layers=n_layers, bidirectional=True, dropout=dropout)
         self.fc = nn.Linear(2 * hid_dim, output_dim)
         self.dropout = nn.Dropout(dropout)
 
-    def forward(self, text, lengths):
+    def forward(self, text, lengths, return_hidden=False):
         # text = [seq len, batch size]
         # lengths = [batch size]
 
@@ -127,18 +137,31 @@ class BiLSTM(nn.Module):
 
         # hidden_fwd/bck = [batch size, hid dim]
 
-        hidden = torch.cat((hidden_fwd, hidden_bck), dim=1)
+        original_hidden = torch.cat((hidden_fwd, hidden_bck), dim=1)
 
         # insert domain adversarial stuff here.
 
         # hidden = [batch size, hid dim * 2]
 
-        prediction = self.fc(self.dropout(hidden))
+
 
         # prediction = [batch size, output dim]
+        if self.noise_layer:
+            m = torch.distributions.laplace.Laplace(torch.tensor([0.0]), torch.tensor([laplace(self.eps, 2)]))
+            # max_hidden = torch.max(hidden, 1, keepdims=True)[0]
+            # min_hidden = torch.min(hidden, 1, keepdims=True)[0]
+            # hidden = (hidden - min_hidden)/ (max_hidden - min_hidden)
+            hidden = original_hidden / torch.norm(original_hidden, keepdim=True)
+            hidden = hidden + m.sample(hidden.shape).squeeze().to(self.device)
+        else:
+            hidden = original_hidden
+
+        prediction = self.fc(self.dropout(hidden))
+
+        if return_hidden:
+            return prediction, original_hidden, hidden
 
         return prediction
-
 
 class DomainAdv(nn.Module):
 
@@ -297,7 +320,7 @@ class Attacker(nn.Module):
         self.adv = DomainAdv(number_of_layers=adv_number_of_layers, input_dim= 2*hid_dim,
                              hidden_dim=hid_dim, output_dim=2, dropout=adv_dropout)
     def forward(self, text, lengths):
-        _, _, hidden = self.original_model(text, lengths)
+        _, _, _,hidden = self.original_model(text, lengths, return_hidden=True)
         output = self.adv(hidden)
         return output
 
@@ -415,14 +438,13 @@ class BiLSTMAdvWithFreeze(nn.Module):
         return torch.nn.ModuleList([self.embedder.embedding, torch.nn.ModuleList([self.embedder.lstm, self.embedder.dropout]),
                                    self.classifier, self.adv])
 
-    def forward(self, text, lengths, gradient_reversal=False):
+    def forward(self, text, lengths, gradient_reversal=False, return_hidden=False):
         # text = [seq len, batch size]
         # lengths = [batch size]
 
 
 
-        hidden = self.embedder(text, lengths)
-
+        original_hidden = self.embedder(text, lengths)
 
 
         if self.noise_layer:
@@ -430,8 +452,10 @@ class BiLSTMAdvWithFreeze(nn.Module):
             # max_hidden = torch.max(hidden, 1, keepdims=True)[0]
             # min_hidden = torch.min(hidden, 1, keepdims=True)[0]
             # hidden = (hidden - min_hidden)/ (max_hidden - min_hidden)
-            hidden = hidden/torch.norm(hidden, keepdim=True)
+            hidden = original_hidden/torch.norm(original_hidden, keepdim=True)
             hidden = hidden + m.sample(hidden.shape).squeeze().to(self.device)
+        else:
+            hidden = original_hidden
 
 
         # hidden = hidden/torch.norm(hidden, keepdim=True)
@@ -442,8 +466,8 @@ class BiLSTMAdvWithFreeze(nn.Module):
         else:
             adv_output = self.adv(hidden)
 
-        if self.return_hidden:
-            return prediction, adv_output, hidden
+        if return_hidden:
+            return prediction, adv_output, original_hidden, hidden
 
         return prediction, adv_output
 
