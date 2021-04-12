@@ -303,6 +303,8 @@ def train_adv_three_phase_custom(model, iterator, optimizer, criterion, device, 
             preds = model(text, lengths)
             if return_hidden:
                 predictions, aux_predictions1, hidden = preds
+            else:
+                predictions, aux_predictions1= preds
 
             if is_regression:
                 loss_main = criterion(predictions.squeeze(), labels.squeeze())
