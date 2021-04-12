@@ -136,8 +136,8 @@ def get_pretrained_embedding(initial_embedding, pretrained_vectors, vocab, devic
 @click.option('-mode_of_loss_scale', '--mode_of_loss_scale', type=str, default="constant", help="constant/linear. The way adv loss scale to be increased with epochs during gradient reversal mode.")
 @click.option('-training_loop_type', '--training_loop_type', type=str, default="three_phase_custom", help="three_phase/three_phase_custom are the two options. Only works with is_adv true")
 @click.option('-hidden_loss', '--hidden_loss', type=bool, default=False, help="if true model return hidden. Generally used in case of adding a L1/L2 regularization over hidden")
-@click.option('-hidden_l1_scale', '--hidden_l1_scale', type=int, default=0.5, help="scaling l1 loss over hidden")
-@click.option('-hidden_l2_scale', '--hidden_l2_scale', type=int, default=0.5, help="scaling l2 loss over hidden")
+@click.option('-hidden_l1_scale', '--hidden_l1_scale', type=float, default=0.5, help="scaling l1 loss over hidden")
+@click.option('-hidden_l2_scale', '--hidden_l2_scale', type=float, default=0.5, help="scaling l2 loss over hidden")
 
 def main(emb_dim:int,
          spacy_model:str,
