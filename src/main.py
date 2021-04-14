@@ -138,7 +138,7 @@ def get_pretrained_embedding(initial_embedding, pretrained_vectors, vocab, devic
 @click.option('-hidden_loss', '--hidden_loss', type=bool, default=False, help="if true model return hidden. Generally used in case of adding a L1/L2 regularization over hidden")
 @click.option('-hidden_l1_scale', '--hidden_l1_scale', type=float, default=0.5, help="scaling l1 loss over hidden")
 @click.option('-hidden_l2_scale', '--hidden_l2_scale', type=float, default=0.5, help="scaling l2 loss over hidden")
-@click.option('-reset_classifier', '--reset_classifer', type=bool, default=False, help="resets classifier in the third Phase of adv training.")
+@click.option('-reset_classifier', '--reset_classifier', type=bool, default=False, help="resets classifier in the third Phase of adv training.")
 @click.option('-reset_adv', '--reset_adv', type=bool, default=True, help="resets adv in the third Phase of adv training.")
 
 def main(emb_dim:int,
