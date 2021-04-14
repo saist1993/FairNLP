@@ -138,6 +138,8 @@ def get_pretrained_embedding(initial_embedding, pretrained_vectors, vocab, devic
 @click.option('-hidden_loss', '--hidden_loss', type=bool, default=False, help="if true model return hidden. Generally used in case of adding a L1/L2 regularization over hidden")
 @click.option('-hidden_l1_scale', '--hidden_l1_scale', type=float, default=0.5, help="scaling l1 loss over hidden")
 @click.option('-hidden_l2_scale', '--hidden_l2_scale', type=float, default=0.5, help="scaling l2 loss over hidden")
+@click.option('-reset_classifier', '--reset_classifer', type=bool, default=False, help="resets classifier in the third Phase of adv training.")
+@click.option('-reset_adv', '--reset_adv', type=bool, default=True, help="resets adv in the third Phase of adv training.")
 
 def main(emb_dim:int,
          spacy_model:str,
@@ -173,7 +175,9 @@ def main(emb_dim:int,
          training_loop_type:str,
          hidden_loss:bool,
          hidden_l1_scale:int,
-         hidden_l2_scale:int):
+         hidden_l2_scale:int,
+         reset_classifier:bool,
+         reset_adv:bool):
     if use_wandb:
         import wandb
         wandb.init(project='bias_in_nlp', entity='magnet', config = click.get_current_context().params)
@@ -357,7 +361,9 @@ def main(emb_dim:int,
             'training_loop_type': training_loop_type,
             'hidden_l1_scale': hidden_l1_scale,
             'hidden_l2_scale': hidden_l2_scale,
-            'return_hidden': hidden_loss
+            'return_hidden': hidden_loss,
+            'reset_classifier': reset_classifier,
+            'reset_adv':reset_adv
         }
 
         if is_adv:
@@ -438,7 +444,9 @@ def main(emb_dim:int,
             'is_post_hoc': True, # here the post-hoc has to be false
             'save_model': False,
             'mode_of_loss_scale': mode_of_loss_scale,
-            'return_hidden': False
+            'return_hidden': False,
+            'reset_classifier': False,
+            'reset_adv':False
         }
 
         best_test_acc, best_valid_acc, test_acc_at_best_valid_acc = basic_training_loop(

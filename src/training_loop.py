@@ -252,7 +252,7 @@ def train_adv_three_phase(model, iterator, optimizer, criterion, device, accurac
             unfreeze(optimizer, model=model, layer='adversary', lr=0.01)
 
         if phase != 'recover':
-            loss_aux = torch.zeros(1)
+            loss_aux = torch.zeros(1, device=device)
 
         total_loss = loss_main + loss_aux
 
@@ -779,6 +779,9 @@ def three_phase_training_loop(
     is_adv = other_params['is_adv']
     save_model = other_params['save_model']
     print(f"is adv: {is_adv}")
+    reset_classifier = other_params['reset_classifier']
+    reset_adv = other_params['reset_adv']
+
     try:
         is_post_hoc = other_params['is_post_hoc']
     except KeyError:
@@ -799,8 +802,10 @@ def three_phase_training_loop(
     except KeyError:
         training_loop_type = 'three_phase'
     assert is_adv == True
-    is_adv_new = False
+
     current_scale = 0
+
+
 
     total_epochs_in_perturbation = float(int(n_epochs * .60) - int(n_epochs * .30))
     def get_current_scale(epoch_number, perturbate_epoch_number, last_scale):
@@ -832,9 +837,13 @@ def three_phase_training_loop(
                 print(f"epoch: {epoch}: {current_scale}")
             else:
                 phase = 'recover'
-                if not is_adv_new:
+                if reset_adv:
                     model.adv.apply(initialize_parameters)
-                    is_adv_new = True
+                    reset_adv = False
+
+                if reset_classifier:
+                    model.classifier.apply(initialize_parameters)
+                    reset_classifier = False
 
 
         print(f"current phase: {phase}")
