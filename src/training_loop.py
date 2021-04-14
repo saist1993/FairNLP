@@ -15,6 +15,7 @@ def epoch_time(start_time, end_time):
     elapsed_secs = int(elapsed_time - (elapsed_mins * 60))
     return elapsed_mins, elapsed_secs
 
+
 def train(model, iterator, optimizer, criterion, device, accuracy_calculation_function, other_params):
     epoch_loss = 0
     epoch_acc = 0
@@ -152,8 +153,9 @@ def train_adv(model, iterator, optimizer, criterion, device, accuracy_calculatio
     return np.mean(epoch_total_loss), np.mean(epoch_loss_main), np.mean(epoch_acc_main), np.mean(epoch_loss_aux), np.mean(epoch_acc_aux)
 
 
-def train_adv_three_phase(model, iterator, optimizer, criterion, device, accuracy_calculation_function, phase, other_params):
 
+def train_adv_three_phase(model, iterator, optimizer, criterion, device, accuracy_calculation_function, phase, other_params):
+    print("using a three phase training loop")
     model.train()
     is_regression = other_params['is_regression']
     loss_aux_scale = other_params["loss_aux_scale"]
@@ -162,6 +164,7 @@ def train_adv_three_phase(model, iterator, optimizer, criterion, device, accurac
     epoch_acc_main = 0
     epoch_loss_aux = 0
     epoch_acc_aux = 0
+    epoch_loss_total = 0
     print(phase)
 
     for labels, text, lengths, aux in tqdm(iterator):
@@ -251,6 +254,8 @@ def train_adv_three_phase(model, iterator, optimizer, criterion, device, accurac
         if phase != 'recover':
             loss_aux = torch.zeros(1)
 
+        total_loss = loss_main + loss_aux
+
         acc_main = accuracy_calculation_function(predictions, labels)
         acc_aux = accuracy_calculation_function(aux_predictions, aux)
 
@@ -260,11 +265,14 @@ def train_adv_three_phase(model, iterator, optimizer, criterion, device, accurac
         epoch_acc_main += acc_main.item()
         epoch_loss_aux += loss_aux.item()
         epoch_acc_aux += acc_aux.item()
+        epoch_loss_total += total_loss.item()
 
-    return epoch_loss_main/ len(iterator), epoch_loss_aux/ len(iterator), epoch_acc_main/ len(iterator), epoch_acc_aux/ len(iterator)
+    return epoch_loss_main/ len(iterator), epoch_loss_aux/ len(iterator), epoch_loss_total/len(iterator),\
+           epoch_acc_main/ len(iterator), epoch_acc_aux/ len(iterator)
+
 
 def train_adv_three_phase_custom(model, iterator, optimizer, criterion, device, accuracy_calculation_function, phase, other_params):
-
+    print("using a three phase custom training loop")
     model.train()
     is_regression = other_params['is_regression']
     loss_aux_scale = other_params["loss_aux_scale"]
@@ -274,6 +282,7 @@ def train_adv_three_phase_custom(model, iterator, optimizer, criterion, device, 
     epoch_acc_main = 0
     epoch_loss_aux = 0
     epoch_acc_aux = 0
+    epoch_total_loss = 0
     # print(phase)
 
     for labels, text, lengths, aux in tqdm(iterator):
@@ -342,6 +351,8 @@ def train_adv_three_phase_custom(model, iterator, optimizer, criterion, device, 
             # model.freeze_unfreeze_classifier(freeze=False)
             unfreeze(optimizer, model=model, layer='encoder', lr=0.01)
             unfreeze(optimizer, model=model, layer='classifier', lr=0.01)
+
+            total_loss = loss_aux + loss_main # This should decrease
             # -- Training ends ---
 
 
@@ -372,9 +383,7 @@ def train_adv_three_phase_custom(model, iterator, optimizer, criterion, device, 
             total_loss = loss_main + (loss_aux_scale*loss_aux)
             total_loss.backward()
             optimizer.step()
-        #
-        # if phase != 'recover':
-        #     loss_aux = torch.zeros(1)
+
 
         acc_main = accuracy_calculation_function(predictions, labels)
         acc_aux = accuracy_calculation_function(aux_predictions, aux)
@@ -385,10 +394,11 @@ def train_adv_three_phase_custom(model, iterator, optimizer, criterion, device, 
         epoch_acc_main += acc_main.item()
         epoch_loss_aux += loss_aux.item()
         epoch_acc_aux += acc_aux.item()
+        epoch_total_loss += total_loss.item()
 
-    return epoch_loss_main/ len(iterator), epoch_loss_aux/ len(iterator), epoch_acc_main/ len(iterator), epoch_acc_aux/ len(iterator)
 
-
+    return epoch_loss_main/ len(iterator), epoch_loss_aux/ len(iterator), epoch_total_loss/ len(iterator), \
+           epoch_acc_main/ len(iterator), epoch_acc_aux/ len(iterator)
 
 
 def train_adv_three_phase_custom_with_noise(model, iterator, optimizer, criterion, device, accuracy_calculation_function, phase, other_params):
@@ -760,6 +770,7 @@ def three_phase_training_loop(
         wandb,
         other_params={'is_adv': False}
 ):
+
     best_valid_loss = 1*float('inf')
     best_valid_acc = -1*float('inf')
     best_test_acc = -1*float('inf')
@@ -831,11 +842,11 @@ def three_phase_training_loop(
         start_time = time.monotonic()
         if training_loop_type == 'three_phase':
             print(f"in three phase: training loop type is {training_loop_type}")
-            train_loss_main, train_loss_aux, train_acc_main,train_acc_aux  = train_adv_three_phase_custom(model, train_iterator, optimizer, criterion, device,
+            train_loss_main, train_loss_aux, train_loss_total, train_acc_main,train_acc_aux  = train_adv_three_phase(model, train_iterator, optimizer, criterion, device,
                                               accuracy_calculation_function, phase, other_params)
         elif training_loop_type == 'three_phase_custom':
             print(f"in three phase custom: training loop type is {training_loop_type}")
-            train_loss_main, train_loss_aux, train_acc_main, train_acc_aux = train_adv_three_phase_custom(model,
+            train_loss_main, train_loss_aux, train_loss_total, train_acc_main, train_acc_aux = train_adv_three_phase_custom(model,
                                                                                                    train_iterator,
                                                                                                    optimizer, criterion,
                                                                                                    device,
@@ -848,7 +859,7 @@ def three_phase_training_loop(
         test_total_loss, test_loss_main, test_acc_main, test_loss_aux, test_acc_aux = evaluate_adv(model, test_iterator, criterion, device, accuracy_calculation_function,
                                            other_params)
 
-        train_total_loss = 0
+        train_total_loss = train_loss_total
 
 
         end_time = time.monotonic()
