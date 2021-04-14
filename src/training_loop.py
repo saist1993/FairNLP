@@ -304,11 +304,9 @@ def train_adv_three_phase_custom(model, iterator, optimizer, criterion, device, 
                 freeze(optimizer, model=model, layer='encoder')
                 # model.freeze_unfreeze_embedder(freeze=True)
 
-            # --- train Embedder and Classifier
-            # model.freeze_unfreeze_adv(freeze=True)
+
             freeze(optimizer, model=model, layer='adversary')
             optimizer.zero_grad()
-            # predictions, aux_predictions1 = model(text, lengths)
             preds = model(text, lengths)
             if return_hidden:
                 predictions, aux_predictions1, hidden = preds
