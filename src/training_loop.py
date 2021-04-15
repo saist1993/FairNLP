@@ -193,6 +193,8 @@ def train_adv_three_phase(model, iterator, optimizer, criterion, device, accurac
         elif phase == 'perturbate' or phase == 'recover':
             optimizer.zero_grad()
             freeze(optimizer, model=model, layer='encoder')
+            if phase == 'perturbate':
+                unfreeze(optimizer, model=model, layer='classifier', lr=0.03)
 
             predictions, aux_predictions = model(text, lengths)
             if is_regression:
@@ -251,7 +253,7 @@ def train_adv_three_phase(model, iterator, optimizer, criterion, device, accurac
             optimizer.step()
             unfreeze(optimizer, model=model, layer='classifier', lr=0.01)
             unfreeze(optimizer, model=model, layer='adversary', lr=0.01)
-
+            unfreeze(optimizer, model=model, layer='encoder', lr=0.01)
         if phase != 'recover':
             loss_aux = torch.zeros(1, device=device)
 
