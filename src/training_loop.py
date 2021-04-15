@@ -159,6 +159,11 @@ def train_adv_three_phase(model, iterator, optimizer, criterion, device, accurac
     model.train()
     is_regression = other_params['is_regression']
     loss_aux_scale = other_params["loss_aux_scale"]
+    try:
+        encoder_learning_rate_second_phase = other_params['encoder_learning_rate_second_phase']
+        classifier_learning_rate_second_phase = other_params['classifier_learning_rate_second_phase']
+    except KeyError:
+        print("!!!!!!********** warning encoder and classifier second phase learning rate not set ****!!!!!")
 
     epoch_loss_main = 0
     epoch_acc_main = 0
@@ -194,7 +199,7 @@ def train_adv_three_phase(model, iterator, optimizer, criterion, device, accurac
             optimizer.zero_grad()
             freeze(optimizer, model=model, layer='encoder')
             if phase == 'perturbate':
-                unfreeze(optimizer, model=model, layer='classifier', lr=0.03)
+                unfreeze(optimizer, model=model, layer='classifier', lr=classifier_learning_rate_second_phase)
 
             predictions, aux_predictions = model(text, lengths)
             if is_regression:
@@ -239,7 +244,7 @@ def train_adv_three_phase(model, iterator, optimizer, criterion, device, accurac
         if phase == 'perturbate':
             freeze(optimizer, model=model, layer='adversary')
             freeze(optimizer, model=model, layer='classifier')
-            unfreeze(optimizer, model=model, layer='encoder', lr=0.03)
+            unfreeze(optimizer, model=model, layer='encoder', lr=encoder_learning_rate_second_phase)
             optimizer.zero_grad()
             predictions, aux_predictions = model(text, lengths)
             if is_regression:

@@ -47,6 +47,11 @@ class WikiSimpleClassification:
         except:
             self.seed = 1234
 
+        try:
+            self.trim_data = params['trim_data']
+        except KeyError:
+            self.trim_data = False
+
     def transform_dataframe_to_dict(self, data_frame:pd, tokenizer:Callable):
         """
 
@@ -340,10 +345,15 @@ class BiasinBiosSimple(WikiSimpleClassification):
 
         assert self.is_regression == False
 
+        if self.trim_data:
+            train = self.read_data("../data/bias_in_bios/train.pickle")[:15000]
+            dev = self.read_data("../data/bias_in_bios/dev.pickle")[:500]
+            test = self.read_data("../data/bias_in_bios/test.pickle")[:500]
+        else:
+            train = self.read_data("../data/bias_in_bios/train.pickle")
+            dev = self.read_data("../data/bias_in_bios/dev.pickle")
+            test = self.read_data("../data/bias_in_bios/test.pickle")
 
-        train = self.read_data("../data/bias_in_bios/train.pickle")
-        dev = self.read_data("../data/bias_in_bios/dev.pickle")
-        test = self.read_data("../data/bias_in_bios/test.pickle")
 
         # Find all professional. Create a professional to id list
         all_profession = list(set([t['p'] for t in train]))
@@ -462,10 +472,14 @@ class BiasinBiosSimpleAdv(WikiSimpleClassification):
 
         assert self.is_regression == False
 
-
-        train = self.read_data("../data/bias_in_bios/train.pickle")
-        dev = self.read_data("../data/bias_in_bios/dev.pickle")
-        test = self.read_data("../data/bias_in_bios/test.pickle")
+        if self.trim_data:
+            train = self.read_data("../data/bias_in_bios/train.pickle")[:15000]
+            dev = self.read_data("../data/bias_in_bios/dev.pickle")[:500]
+            test = self.read_data("../data/bias_in_bios/test.pickle")[:500]
+        else:
+            train = self.read_data("../data/bias_in_bios/train.pickle")
+            dev = self.read_data("../data/bias_in_bios/dev.pickle")
+            test = self.read_data("../data/bias_in_bios/test.pickle")
 
         # Find all professional. Create a professional to id list
         try:
