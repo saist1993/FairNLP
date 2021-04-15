@@ -102,6 +102,10 @@ def get_pretrained_embedding(initial_embedding, pretrained_vectors, vocab, devic
     return pretrained_embedding, unk_tokens
 
 
+
+
+
+
 @click.command()
 @click.option('-embedding', '--emb_dim', type=int, default=300)
 @click.option('-spacy', '--spacy_model', type=str, default="en_core_web_sm", help="the spacy model used for tokenization. This might not be suitable for twitter and other noisy use cases ")
@@ -140,6 +144,9 @@ def get_pretrained_embedding(initial_embedding, pretrained_vectors, vocab, devic
 @click.option('-hidden_l2_scale', '--hidden_l2_scale', type=float, default=0.5, help="scaling l2 loss over hidden")
 @click.option('-reset_classifier', '--reset_classifier', type=bool, default=False, help="resets classifier in the third Phase of adv training.")
 @click.option('-reset_adv', '--reset_adv', type=bool, default=True, help="resets adv in the third Phase of adv training.")
+@click.option('-encoder_learning_rate_second_phase', '--encoder_learning_rate_second_phase', type=float, default=0.01, help="changes the learning rate of encoder (embedder) in second phase")
+@click.option('-classifier_learning_rate_second_phase', '--classifier_learning_rate_second_phase', type=float, default=0.01, help="changes the learning rate of main task classifier in second phase")
+@click.option('-trim_data', '--trim_data', type=bool, default=False, help="decreases the trainging data in  bias_in_bios to 15000")
 
 def main(emb_dim:int,
          spacy_model:str,
@@ -177,7 +184,11 @@ def main(emb_dim:int,
          hidden_l1_scale:int,
          hidden_l2_scale:int,
          reset_classifier:bool,
-         reset_adv:bool):
+         reset_adv:bool,
+         encoder_learning_rate_second_phase:float,
+         classifier_learning_rate_second_phase:float,
+         trim_data:bool
+         ):
     if use_wandb:
         import wandb
         wandb.init(project='bias_in_nlp', entity='magnet', config = click.get_current_context().params)
@@ -224,7 +235,8 @@ def main(emb_dim:int,
         'batch_size': batch_size,
         'is_regression': regression,
         'vocab': vocab,
-        'is_adv': is_adv
+        'is_adv': is_adv,
+        'trim_data': trim_data
     }
     vocab, number_of_labels, train_iterator, dev_iterator, test_iterator = \
         generate_data_iterator(dataset_name=dataset_name, **iterator_params)
@@ -262,6 +274,7 @@ def main(emb_dim:int,
             'learnable_embeddings': learnable_embeddings,
             'return_hidden': hidden_loss
         }
+
         if is_adv:
             # model = BiLSTMAdv(model_params)
             model = BiLSTMAdvWithFreeze(model_params)
@@ -363,7 +376,9 @@ def main(emb_dim:int,
             'hidden_l2_scale': hidden_l2_scale,
             'return_hidden': hidden_loss,
             'reset_classifier': reset_classifier,
-            'reset_adv':reset_adv
+            'reset_adv':reset_adv,
+            'encoder_learning_rate_second_phase': encoder_learning_rate_second_phase,
+            'classifier_learning_rate_second_phase': classifier_learning_rate_second_phase
         }
 
         if is_adv:
@@ -446,7 +461,9 @@ def main(emb_dim:int,
             'mode_of_loss_scale': mode_of_loss_scale,
             'return_hidden': False,
             'reset_classifier': False,
-            'reset_adv':False
+            'reset_adv':False,
+            'encoder_learning_rate_second_phase': encoder_learning_rate_second_phase,
+            'classifier_learning_rate_second_phase': classifier_learning_rate_second_phase
         }
 
         best_test_acc, best_valid_acc, test_acc_at_best_valid_acc = basic_training_loop(
@@ -511,4 +528,3 @@ def main(emb_dim:int,
 
 if __name__ == '__main__':
     main()
-
