@@ -237,6 +237,7 @@ def train_adv_three_phase(model, iterator, optimizer, criterion, device, accurac
         if phase == 'perturbate':
             freeze(optimizer, model=model, layer='adversary')
             freeze(optimizer, model=model, layer='classifier')
+            unfreeze(optimizer, model=model, layer='encoder', lr=0.03)
             optimizer.zero_grad()
             predictions, aux_predictions = model(text, lengths)
             if is_regression:
