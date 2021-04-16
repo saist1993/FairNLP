@@ -165,6 +165,8 @@ def train_adv_three_phase(model, iterator, optimizer, criterion, device, accurac
     except KeyError:
         print("!!!!!!********** warning encoder and classifier second phase learning rate not set ****!!!!!")
 
+    print(f"learnign rates are {encoder_learning_rate_second_phase} ::: {classifier_learning_rate_second_phase}")
+
     epoch_loss_main = 0
     epoch_acc_main = 0
     epoch_loss_aux = 0
@@ -259,7 +261,9 @@ def train_adv_three_phase(model, iterator, optimizer, criterion, device, accurac
             unfreeze(optimizer, model=model, layer='classifier', lr=0.01)
             unfreeze(optimizer, model=model, layer='adversary', lr=0.01)
             unfreeze(optimizer, model=model, layer='encoder', lr=0.01)
-        if phase != 'recover':
+        try:
+            loss_aux = loss_aux + torch.zeros(1, device=device)
+        except:
             loss_aux = torch.zeros(1, device=device)
 
         total_loss = loss_main + loss_aux
