@@ -147,6 +147,8 @@ def get_pretrained_embedding(initial_embedding, pretrained_vectors, vocab, devic
 @click.option('-encoder_learning_rate_second_phase', '--encoder_learning_rate_second_phase', type=float, default=0.01, help="changes the learning rate of encoder (embedder) in second phase")
 @click.option('-classifier_learning_rate_second_phase', '--classifier_learning_rate_second_phase', type=float, default=0.01, help="changes the learning rate of main task classifier in second phase")
 @click.option('-trim_data', '--trim_data', type=bool, default=False, help="decreases the trainging data in  bias_in_bios to 15000")
+@click.option('-eps_scale', '--eps_scale', type=str, default="constant", help="constant/linear. The way eps should decrease with iteration.")
+
 
 def main(emb_dim:int,
          spacy_model:str,
@@ -187,7 +189,8 @@ def main(emb_dim:int,
          reset_adv:bool,
          encoder_learning_rate_second_phase:float,
          classifier_learning_rate_second_phase:float,
-         trim_data:bool
+         trim_data:bool,
+         eps_scale:str
          ):
     if use_wandb:
         import wandb
@@ -379,7 +382,9 @@ def main(emb_dim:int,
             'reset_adv':reset_adv,
             'encoder_learning_rate_second_phase': encoder_learning_rate_second_phase,
             'classifier_learning_rate_second_phase': classifier_learning_rate_second_phase,
-            'eps':eps
+            'eps':eps,
+            'eps_scale': eps_scale
+
         }
 
         if is_adv:
@@ -465,7 +470,8 @@ def main(emb_dim:int,
             'reset_adv':False,
             'encoder_learning_rate_second_phase': encoder_learning_rate_second_phase,
             'classifier_learning_rate_second_phase': classifier_learning_rate_second_phase,
-            'eps':eps
+            'eps':eps,
+            'eps_scale': eps_scale
         }
 
         best_test_acc, best_valid_acc, test_acc_at_best_valid_acc = basic_training_loop(
