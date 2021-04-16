@@ -631,22 +631,27 @@ def basic_training_loop(
 
 
 
-    total_epochs_in_perturbation = int(n_epochs*.70)
+    linearly_decrease_eps_till = int(n_epochs*.70)
     current_scale = 10000
     original_current_scale = 10000
+
+
     def get_current_eps(epoch_number, last_scale):
         if eps_scale == 'constant':
             current_scale = original_eps
             return current_scale
         if eps_scale == 'linear':
-            decrease = (original_current_scale*1.0 - original_eps)/total_epochs_in_perturbation*1.0
-            current_scale = last_scale - decrease
+            if epoch_number < linearly_decrease_eps_till:
+                decrease = (original_current_scale*1.0 - original_eps)/linearly_decrease_eps_till*1.0
+                current_scale = last_scale - decrease
+            else:
+                current_scale = original_eps
+            return current_scale
+
             return current_scale
         if eps_scale == 'exp':
             raise NotImplementedError
-            p_i = perturbate_epoch_number / total_epochs_in_perturbation
-            current_scale = float(other_params['loss_aux_scale'] * (2.0 / (1.0 + np.exp(-10 * p_i)) - 1.0))
-            return current_scale
+
 
     for epoch in range(n_epochs):
 
@@ -756,7 +761,9 @@ def basic_training_loop(
                                               last_scale=current_scale)
             other_params['eps'] = current_scale
             train_loss, train_acc = train(model, train_iterator, optimizer, criterion, device, accuracy_calculation_function, other_params)
-            other_params['eps'] = original_eps
+
+            if model.noise_layer:
+                model.eps = original_eps
             valid_loss, valid_acc = evaluate(model, dev_iterator, criterion, device, accuracy_calculation_function, other_params)
             test_loss, test_acc = evaluate(model, test_iterator, criterion, device, accuracy_calculation_function, other_params)
 
