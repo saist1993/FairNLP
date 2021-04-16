@@ -616,6 +616,7 @@ def basic_training_loop(
     is_adv = other_params['is_adv']
     save_model = other_params['save_model']
     original_eps = other_params['eps']
+    eps_scale = other_params['eps_scale']
     try:
         is_post_hoc = other_params['is_post_hoc']
     except KeyError:
@@ -627,6 +628,25 @@ def basic_training_loop(
         return_hidden = False
 
     print(f"is adv: {is_adv}")
+
+
+
+    total_epochs_in_perturbation = n_epochs
+    current_scale = 10000
+    original_current_scale = 10000
+    def get_current_eps(epoch_number, last_scale):
+        if eps_scale == 'constant':
+            current_scale = original_eps
+            return current_scale
+        if eps_scale == 'linear':
+            decrease = (original_current_scale*1.0 - original_eps)/total_epochs_in_perturbation*1.0
+            current_scale = last_scale - decrease
+            return current_scale
+        if eps_scale == 'exp':
+            raise NotImplementedError
+            p_i = perturbate_epoch_number / total_epochs_in_perturbation
+            current_scale = float(other_params['loss_aux_scale'] * (2.0 / (1.0 + np.exp(-10 * p_i)) - 1.0))
+            return current_scale
 
     for epoch in range(n_epochs):
 
@@ -729,14 +749,14 @@ def basic_training_loop(
 
         else:
 
-            if epoch < int(0.35*n_epochs):
-                eps = 10000
-            else:
-                eps = original_eps
 
-            other_params['eps'] = eps
 
+
+            current_scale = get_current_eps(epoch_number=epoch,
+                                              last_scale=current_scale)
+            other_params['eps'] = current_scale
             train_loss, train_acc = train(model, train_iterator, optimizer, criterion, device, accuracy_calculation_function, other_params)
+            other_params['eps'] = original_eps
             valid_loss, valid_acc = evaluate(model, dev_iterator, criterion, device, accuracy_calculation_function, other_params)
             test_loss, test_acc = evaluate(model, test_iterator, criterion, device, accuracy_calculation_function, other_params)
 
