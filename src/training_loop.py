@@ -25,6 +25,8 @@ def train(model, iterator, optimizer, criterion, device, accuracy_calculation_fu
     return_hidden = other_params['return_hidden']
     hidden_l1_scale = other_params['hidden_l1_scale']
     hidden_l2_scale = other_params['hidden_l2_scale']
+    if model.noise_layer:
+        model.eps = other_params['eps']
 
     for labels, text, lengths in tqdm(iterator):
         labels = labels.to(device)
@@ -613,6 +615,7 @@ def basic_training_loop(
     best_valid_acc_epoch = 0
     is_adv = other_params['is_adv']
     save_model = other_params['save_model']
+    original_eps = other_params['eps']
     try:
         is_post_hoc = other_params['is_post_hoc']
     except KeyError:
@@ -725,6 +728,14 @@ def basic_training_loop(
                     })
 
         else:
+
+            if epoch < int(0.35*n_epochs):
+                eps = 10000
+            else:
+                eps = original_eps
+
+            other_params['eps'] = eps
+
             train_loss, train_acc = train(model, train_iterator, optimizer, criterion, device, accuracy_calculation_function, other_params)
             valid_loss, valid_acc = evaluate(model, dev_iterator, criterion, device, accuracy_calculation_function, other_params)
             test_loss, test_acc = evaluate(model, test_iterator, criterion, device, accuracy_calculation_function, other_params)

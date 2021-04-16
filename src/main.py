@@ -378,7 +378,8 @@ def main(emb_dim:int,
             'reset_classifier': reset_classifier,
             'reset_adv':reset_adv,
             'encoder_learning_rate_second_phase': encoder_learning_rate_second_phase,
-            'classifier_learning_rate_second_phase': classifier_learning_rate_second_phase
+            'classifier_learning_rate_second_phase': classifier_learning_rate_second_phase,
+            'eps':eps
         }
 
         if is_adv:
@@ -463,7 +464,8 @@ def main(emb_dim:int,
             'reset_classifier': False,
             'reset_adv':False,
             'encoder_learning_rate_second_phase': encoder_learning_rate_second_phase,
-            'classifier_learning_rate_second_phase': classifier_learning_rate_second_phase
+            'classifier_learning_rate_second_phase': classifier_learning_rate_second_phase,
+            'eps':eps
         }
 
         best_test_acc, best_valid_acc, test_acc_at_best_valid_acc = basic_training_loop(
