@@ -632,8 +632,8 @@ def basic_training_loop(
 
 
     linearly_decrease_eps_till = int(n_epochs*.70)
-    current_scale = 10000
-    original_current_scale = 10000
+    current_scale = 100
+    original_current_scale = 100
 
 
     def get_current_eps(epoch_number, last_scale):
