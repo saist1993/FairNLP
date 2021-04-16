@@ -631,7 +631,7 @@ def basic_training_loop(
 
 
 
-    total_epochs_in_perturbation = n_epochs
+    total_epochs_in_perturbation = int(n_epochs*.70)
     current_scale = 10000
     original_current_scale = 10000
     def get_current_eps(epoch_number, last_scale):
