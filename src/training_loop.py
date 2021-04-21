@@ -924,7 +924,7 @@ def three_phase_training_loop(
                     model.classifier.apply(initialize_parameters)
                     reset_classifier = False
 
-
+        phase = 'perturbate'
         print(f"current phase: {phase}")
 
         start_time = time.monotonic()
