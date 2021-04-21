@@ -448,7 +448,7 @@ def train_adv_three_phase_custom(model, iterator, optimizer, criterion, device, 
 
 
     return epoch_loss_main/ len(iterator), epoch_loss_aux/ len(iterator), epoch_total_loss/ len(iterator), \
-           epoch_acc_main/ len(iterator), epoch_acc_aux/ len(iterator), enc_grad_norm
+           epoch_acc_main/ len(iterator), epoch_acc_aux/ len(iterator)
 
 
 def train_adv_three_phase_custom_with_noise(model, iterator, optimizer, criterion, device, accuracy_calculation_function, phase, other_params):
@@ -961,7 +961,7 @@ def three_phase_training_loop(
         elif training_loop_type == 'three_phase_custom':
 
             print(f"in three phase custom: training loop type is {training_loop_type}")
-            train_loss_main, train_loss_aux, train_loss_total, train_acc_main, train_acc_aux, enc_grad_norm = train_adv_three_phase_custom(model,
+            train_loss_main, train_loss_aux, train_loss_total, train_acc_main, train_acc_aux = train_adv_three_phase_custom(model,
                                                                                                    train_iterator,
                                                                                                    optimizer, criterion,
                                                                                                    device,
