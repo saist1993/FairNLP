@@ -1004,7 +1004,7 @@ def three_phase_training_loop(
         print(f'\t Val. Loss: {valid_loss:.3f} |  Val. Acc: {valid_acc}%')
         print(f'\t Test Loss: {test_loss:.3f} |  Val. Acc: {test_acc}%')
 
-        print(enc_grad_norm)
+        # print(enc_grad_norm)
         if wandb:
 
             try:
