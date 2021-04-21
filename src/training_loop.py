@@ -876,9 +876,9 @@ def three_phase_training_loop(
         if only_perturbate:
             phase = 'perturbate'
         else:
-            if epoch < int(n_epochs*.25):
+            if epoch < int(n_epochs*.30):
                 phase = 'initial'
-            elif epoch >=int(n_epochs*.25) and epoch< int(n_epochs*.75):
+            elif epoch >=int(n_epochs*.30) and epoch< int(n_epochs*.60):
                 phase = 'perturbate'
                 perturbate_epoch_number = perturbate_epoch_number + 1
                 current_scale = get_current_scale(epoch_number = epoch, perturbate_epoch_number=perturbate_epoch_number, last_scale = current_scale)
