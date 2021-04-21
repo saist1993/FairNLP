@@ -377,33 +377,42 @@ def train_adv_three_phase_custom(model, iterator, optimizer, criterion, device, 
             # model.freeze_unfreeze_embedder(freeze=False)
             # model.freeze_unfreeze_classifier(freeze=False)
             # model.freeze_unfreeze_adv(freeze=False)
-            unfreeze(optimizer, model=model, layer='encoder', lr=0.01)
-            unfreeze(optimizer, model=model, layer='classifier', lr=0.01)
-            unfreeze(optimizer, model=model, layer='adversary', lr=0.01)
+            try:
+                encoder_lr = other_params['encoder_lr']
+                classifier_lr = other_params['classifier_lr']
+                adversary_lr = other_params['adversary_lr']
+            except KeyError:
+                encoder_lr = 0.01
+                classifier_lr = 0.01
+                adversary_lr = 0.01
 
-            """
-                Fake run just to get grad norms
-            """
-            optimizer.zero_grad()
-            if return_hidden:
-                predictions, aux_predictions, hidden = model(text, lengths, gradient_reversal=True)
-            else:
-                predictions, aux_predictions = model(text, lengths, gradient_reversal=True)
+            unfreeze(optimizer, model=model, layer='encoder', lr=encoder_lr)
+            unfreeze(optimizer, model=model, layer='classifier', lr=classifier_lr)
+            unfreeze(optimizer, model=model, layer='adversary', lr=adversary_lr)
 
-            if is_regression:
-                loss_main = criterion(predictions.squeeze(), labels.squeeze())
-                loss_aux = criterion(aux_predictions.squeeze(), aux.squeeze())
-            else:
-                loss_main = criterion(predictions, labels)
-                loss_aux = criterion(aux_predictions, aux)
-
-            total_loss = (loss_aux_scale * loss_aux)
-
-            total_loss.backward()
-            enc_grad_norm = get_enc_grad_norm(model)
-            """
-                Fake run over.
-            """
+            # """
+            #     Fake run just to get grad norms
+            # """
+            # optimizer.zero_grad()
+            # if return_hidden:
+            #     predictions, aux_predictions, hidden = model(text, lengths, gradient_reversal=True)
+            # else:
+            #     predictions, aux_predictions = model(text, lengths, gradient_reversal=True)
+            #
+            # if is_regression:
+            #     loss_main = criterion(predictions.squeeze(), labels.squeeze())
+            #     loss_aux = criterion(aux_predictions.squeeze(), aux.squeeze())
+            # else:
+            #     loss_main = criterion(predictions, labels)
+            #     loss_aux = criterion(aux_predictions, aux)
+            #
+            # total_loss = (loss_aux_scale * loss_aux)
+            #
+            # total_loss.backward()
+            # enc_grad_norm = get_enc_grad_norm(model)
+            # """
+            #     Fake run over.
+            # """
 
 
             optimizer.zero_grad()
@@ -883,6 +892,20 @@ def three_phase_training_loop(
     assert is_adv == True
 
     current_scale = 0
+    epochs_to_increase_lr = 8
+    lr_starts = 0.001
+    lr_ends = 0.01
+    current_lr = lr_starts
+    interval_increase_lr = (lr_ends-lr_starts)/epochs_to_increase_lr
+
+    # so
+
+    def get_lr(current_lr,perturbate_epoch_number):
+        if perturbate_epoch_number > epochs_to_increase_lr:
+            return lr_ends
+        else:
+            current_lr = current_lr + interval_increase_lr
+            return current_lr
 
 
 
@@ -913,7 +936,11 @@ def three_phase_training_loop(
                 phase = 'perturbate'
                 perturbate_epoch_number = perturbate_epoch_number + 1
                 current_scale = get_current_scale(epoch_number = epoch, perturbate_epoch_number=perturbate_epoch_number, last_scale = current_scale)
+                current_lr = get_lr(current_lr, perturbate_epoch_number=perturbate_epoch_number)
                 print(f"epoch: {epoch}: {current_scale}")
+                other_params['encoder_lr'] = current_lr
+                other_params['classifier_lr'] = current_lr
+                other_params['adversary_lr'] = current_lr
             else:
                 phase = 'recover'
                 if reset_adv:
@@ -932,6 +959,7 @@ def three_phase_training_loop(
             train_loss_main, train_loss_aux, train_loss_total, train_acc_main,train_acc_aux  = train_adv_three_phase(model, train_iterator, optimizer, criterion, device,
                                               accuracy_calculation_function, phase, other_params)
         elif training_loop_type == 'three_phase_custom':
+
             print(f"in three phase custom: training loop type is {training_loop_type}")
             train_loss_main, train_loss_aux, train_loss_total, train_acc_main, train_acc_aux, enc_grad_norm = train_adv_three_phase_custom(model,
                                                                                                    train_iterator,
