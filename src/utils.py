@@ -257,16 +257,15 @@ class TextClassificationDataset(torch.utils.data.Dataset):
 
 def get_enc_grad_norm(model):
 
-    try:
 
         tn = 0
 
         for p in model.embedder.parameters(2):
-            pn = p.grad.data.norm(2)
-            tn += pn.item() ** 2
+            try:
+                pn = p.grad.data.norm(2)
+                tn += pn.item() ** 2
+            except:
+                continue
 
         tn = tn ** (1. / 2)
         return tn
-
-    except:
-        return 0.0
