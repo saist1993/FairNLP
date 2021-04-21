@@ -299,6 +299,13 @@ def train_adv_three_phase_custom(model, iterator, optimizer, criterion, device, 
     epoch_total_loss = 0
     # print(phase)
 
+    try:
+        encoder_learning_rate_second_phase = other_params['encoder_learning_rate_second_phase']
+        classifier_learning_rate_second_phase = other_params['classifier_learning_rate_second_phase']
+    except KeyError:
+        print("!!!!!!********** warning encoder and classifier second phase learning rate not set ****!!!!!")
+
+
     for labels, text, lengths, aux in tqdm(iterator):
         labels = labels.to(device)
         text = text.to(device)
@@ -314,6 +321,11 @@ def train_adv_three_phase_custom(model, iterator, optimizer, criterion, device, 
                 Train Freeze (Embedder) + Adv
             """
             #
+
+            unfreeze(optimizer, model=model, layer='encoder', lr=0.01)
+            unfreeze(optimizer, model=model, layer='classifier', lr=0.01)
+            unfreeze(optimizer, model=model, layer='adversary', lr=0.01)
+
             if phase == 'recover':
                 freeze(optimizer, model=model, layer='encoder')
                 # model.freeze_unfreeze_embedder(freeze=True)
@@ -386,8 +398,8 @@ def train_adv_three_phase_custom(model, iterator, optimizer, criterion, device, 
                 classifier_lr = 0.01
                 adversary_lr = 0.01
 
-            unfreeze(optimizer, model=model, layer='encoder', lr=encoder_lr)
-            unfreeze(optimizer, model=model, layer='classifier', lr=classifier_lr)
+            unfreeze(optimizer, model=model, layer='encoder', lr=encoder_learning_rate_second_phase)
+            unfreeze(optimizer, model=model, layer='classifier', lr=classifier_learning_rate_second_phase)
             unfreeze(optimizer, model=model, layer='adversary', lr=adversary_lr)
 
             # """
