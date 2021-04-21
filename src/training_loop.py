@@ -7,7 +7,7 @@ from models import initialize_parameters
 
 
 # custom imports
-from utils import CustomError
+from utils import CustomError, get_enc_grad_norm
 
 def epoch_time(start_time, end_time):
     elapsed_time = end_time - start_time
@@ -358,6 +358,9 @@ def train_adv_three_phase_custom(model, iterator, optimizer, criterion, device, 
                 loss_aux = criterion(aux_predictions, aux)
 
             loss_aux.backward()
+
+            enc_grad_norm = get_enc_grad_norm(model)
+
             optimizer.step()
             # model.freeze_unfreeze_embedder(freeze=False)
             # model.freeze_unfreeze_classifier(freeze=False)
@@ -378,6 +381,31 @@ def train_adv_three_phase_custom(model, iterator, optimizer, criterion, device, 
             unfreeze(optimizer, model=model, layer='classifier', lr=0.01)
             unfreeze(optimizer, model=model, layer='adversary', lr=0.01)
 
+            """
+                Fake run just to get grad norms
+            """
+            optimizer.zero_grad()
+            if return_hidden:
+                predictions, aux_predictions, hidden = model(text, lengths, gradient_reversal=True)
+            else:
+                predictions, aux_predictions = model(text, lengths, gradient_reversal=True)
+
+            if is_regression:
+                loss_main = criterion(predictions.squeeze(), labels.squeeze())
+                loss_aux = criterion(aux_predictions.squeeze(), aux.squeeze())
+            else:
+                loss_main = criterion(predictions, labels)
+                loss_aux = criterion(aux_predictions, aux)
+
+            total_loss = (loss_aux_scale * loss_aux)
+
+            total_loss.backward()
+            enc_grad_norm = get_enc_grad_norm(model)
+            """
+                Fake run over.
+            """
+
+
             optimizer.zero_grad()
 
             if return_hidden:
@@ -393,6 +421,7 @@ def train_adv_three_phase_custom(model, iterator, optimizer, criterion, device, 
                 loss_aux = criterion(aux_predictions, aux)
 
             total_loss = loss_main + (loss_aux_scale*loss_aux)
+
             total_loss.backward()
             optimizer.step()
 
@@ -410,7 +439,7 @@ def train_adv_three_phase_custom(model, iterator, optimizer, criterion, device, 
 
 
     return epoch_loss_main/ len(iterator), epoch_loss_aux/ len(iterator), epoch_total_loss/ len(iterator), \
-           epoch_acc_main/ len(iterator), epoch_acc_aux/ len(iterator)
+           epoch_acc_main/ len(iterator), epoch_acc_aux/ len(iterator), enc_grad_norm
 
 
 def train_adv_three_phase_custom_with_noise(model, iterator, optimizer, criterion, device, accuracy_calculation_function, phase, other_params):
@@ -497,6 +526,8 @@ def train_adv_three_phase_custom_with_noise(model, iterator, optimizer, criterio
             unfreeze(optimizer, model=model, layer='adversary', lr=0.01)
 
             optimizer.zero_grad()
+
+
 
             predictions, aux_predictions = model(text, lengths, gradient_reversal=True)
             if is_regression:
@@ -903,7 +934,7 @@ def three_phase_training_loop(
                                               accuracy_calculation_function, phase, other_params)
         elif training_loop_type == 'three_phase_custom':
             print(f"in three phase custom: training loop type is {training_loop_type}")
-            train_loss_main, train_loss_aux, train_loss_total, train_acc_main, train_acc_aux = train_adv_three_phase_custom(model,
+            train_loss_main, train_loss_aux, train_loss_total, train_acc_main, train_acc_aux, enc_grad_norm = train_adv_three_phase_custom(model,
                                                                                                    train_iterator,
                                                                                                    optimizer, criterion,
                                                                                                    device,
@@ -946,9 +977,13 @@ def three_phase_training_loop(
         print(f'\t Val. Loss: {valid_loss:.3f} |  Val. Acc: {valid_acc}%')
         print(f'\t Test Loss: {test_loss:.3f} |  Val. Acc: {test_acc}%')
 
+        print(enc_grad_norm)
         if wandb:
 
-
+            try:
+                enc_grad_norm = enc_grad_norm
+            except:
+                enc_grad_norm = 0.0
             wandb.log({
                 'train_loss_total': train_total_loss,
                 'train_loss_main': train_loss_main,
@@ -965,7 +1000,8 @@ def three_phase_training_loop(
                 'valid_acc_aux': valid_acc_aux,
                 'test_acc_main': test_acc_main,
                 'test_acc_aux': test_acc_aux,
-                'epoch': epoch
+                'epoch': epoch,
+                'encoder_norm': enc_grad_norm
             })
 
     if not only_perturbate:
