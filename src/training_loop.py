@@ -299,8 +299,7 @@ def train_adv_three_phase_custom(model, iterator, optimizer, criterion, device, 
     epoch_total_loss = 0
     # print(phase)
 
-    return epoch_loss_main / len(iterator), epoch_loss_aux / len(iterator), epoch_total_loss / len(iterator), \
-           epoch_acc_main / len(iterator), epoch_acc_aux / len(iterator)
+
 
     try:
         encoder_learning_rate_second_phase = other_params['encoder_learning_rate_second_phase']
