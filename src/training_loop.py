@@ -291,13 +291,16 @@ def train_adv_three_phase_custom(model, iterator, optimizer, criterion, device, 
     is_regression = other_params['is_regression']
     loss_aux_scale = other_params["loss_aux_scale"]
     return_hidden = other_params["return_hidden"]
-
+    print(f"loss aux scale is {loss_aux_scale}")
     epoch_loss_main = 0
     epoch_acc_main = 0
     epoch_loss_aux = 0
     epoch_acc_aux = 0
     epoch_total_loss = 0
     # print(phase)
+
+    return epoch_loss_main / len(iterator), epoch_loss_aux / len(iterator), epoch_total_loss / len(iterator), \
+           epoch_acc_main / len(iterator), epoch_acc_aux / len(iterator)
 
     try:
         encoder_learning_rate_second_phase = other_params['encoder_learning_rate_second_phase']
@@ -922,16 +925,18 @@ def three_phase_training_loop(
 
 
     total_epochs_in_perturbation = float(int(n_epochs * .60) - int(n_epochs * .30))
+    original_loss_aux_scale = other_params['loss_aux_scale']
+
     def get_current_scale(epoch_number, perturbate_epoch_number, last_scale):
         if mode_of_loss_scale == 'constant':
-            current_scale = other_params['loss_aux_scale']
+            current_scale = original_loss_aux_scale
             return current_scale
         if mode_of_loss_scale == 'linear':
-            current_scale = last_scale + other_params['loss_aux_scale']*1.0/total_epochs_in_perturbation
+            current_scale = last_scale + original_loss_aux_scale*1.0/total_epochs_in_perturbation
             return current_scale
         if mode_of_loss_scale == 'exp':
             p_i = perturbate_epoch_number / total_epochs_in_perturbation
-            current_scale = float(other_params['loss_aux_scale'] * (2.0 / (1.0 + np.exp(-10 * p_i)) - 1.0))
+            current_scale = float(original_loss_aux_scale * (2.0 / (1.0 + np.exp(-10 * p_i)) - 1.0))
             return current_scale
 
     perturbate_epoch_number = 0
@@ -953,6 +958,7 @@ def three_phase_training_loop(
                 other_params['encoder_lr'] = current_lr
                 other_params['classifier_lr'] = current_lr
                 other_params['adversary_lr'] = current_lr
+                other_params['loss_aux_scale'] = current_scale
             else:
                 phase = 'recover'
                 if reset_adv:
