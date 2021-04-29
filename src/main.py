@@ -143,7 +143,7 @@ def get_pretrained_embedding(initial_embedding, pretrained_vectors, vocab, devic
 @click.option('-hidden_l1_scale', '--hidden_l1_scale', type=float, default=0.5, help="scaling l1 loss over hidden")
 @click.option('-hidden_l2_scale', '--hidden_l2_scale', type=float, default=0.5, help="scaling l2 loss over hidden")
 @click.option('-reset_classifier', '--reset_classifier', type=bool, default=False, help="resets classifier in the third Phase of adv training.")
-@click.option('-reset_adv', '--reset_adv', type=bool, default=True, help="resets adv in the third Phase of adv training.")
+@click.option('-reset_adv', '--reset_adv', type=bool, default=False, help="resets adv in the third Phase of adv training.")
 @click.option('-encoder_learning_rate_second_phase', '--encoder_learning_rate_second_phase', type=float, default=0.01, help="changes the learning rate of encoder (embedder) in second phase")
 @click.option('-classifier_learning_rate_second_phase', '--classifier_learning_rate_second_phase', type=float, default=0.01, help="changes the learning rate of main task classifier in second phase")
 @click.option('-trim_data', '--trim_data', type=bool, default=False, help="decreases the trainging data in  bias_in_bios to 15000")
