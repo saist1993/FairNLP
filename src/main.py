@@ -216,6 +216,7 @@ def main(emb_dim:int,
     np.random.seed(seed)
     torch.backends.cudnn.deterministic = True
     torch.backends.cudnn.benchmark = False
+    # torch.backends.cudnn.enabled = False
     device = resolve_device() # if cuda: then cuda else cpu
 
 
@@ -345,7 +346,7 @@ def main(emb_dim:int,
     # setting up optimizer
     if is_adv:
     # optimizer = optim.Adam(model.parameters([param for param in model.parameters() if param.requires_grad == True]), lr=0.01)
-        opt_fn = partial(torch.optim.Adam)
+        opt_fn = partial(torch.optim.SGD)
         optimizer = make_opt(model, opt_fn, lr=0.01)
     else:
         optimizer = optim.Adam(model.parameters([param for param in model.parameters() if param.requires_grad == True]),
