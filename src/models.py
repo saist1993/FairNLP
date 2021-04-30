@@ -444,7 +444,6 @@ class BiLSTMAdvWithFreeze(nn.Module):
         # lengths = [batch size]
 
 
-
         original_hidden = self.embedder(text, lengths)
 
 
@@ -475,27 +474,27 @@ class BiLSTMAdvWithFreeze(nn.Module):
 
 def initialize_parameters(m):
     if isinstance(m, nn.Embedding):
-        nn.init.uniform_(m.weight, -0.05, 0.05)
+        nn.init.uniform_(m.weight, -0.05, 0.05).double()
     elif isinstance(m, nn.LSTM):
         for n, p in m.named_parameters():
             if 'weight_ih' in n:
                 i, f, g, o = p.chunk(4)
-                nn.init.xavier_uniform_(i)
-                nn.init.xavier_uniform_(f)
-                nn.init.xavier_uniform_(g)
-                nn.init.xavier_uniform_(o)
+                nn.init.xavier_uniform_(i).double()
+                nn.init.xavier_uniform_(f).double()
+                nn.init.xavier_uniform_(g).double()
+                nn.init.xavier_uniform_(o).double()
             elif 'weight_hh' in n:
                 i, f, g, o = p.chunk(4)
-                nn.init.orthogonal_(i)
-                nn.init.orthogonal_(f)
-                nn.init.orthogonal_(g)
-                nn.init.orthogonal_(o)
+                nn.init.orthogonal_(i).double()
+                nn.init.orthogonal_(f).double()
+                nn.init.orthogonal_(g).double()
+                nn.init.orthogonal_(o).double()
             elif 'bias' in n:
                 i, f, g, o = p.chunk(4)
-                nn.init.zeros_(i)
-                nn.init.ones_(f)
-                nn.init.zeros_(g)
-                nn.init.zeros_(o)
+                nn.init.zeros_(i).double()
+                nn.init.ones_(f).double()
+                nn.init.zeros_(g).double()
+                nn.init.zeros_(o).double()
     elif isinstance(m, nn.Linear):
-        nn.init.xavier_uniform_(m.weight)
-        nn.init.zeros_(m.bias)
+        nn.init.xavier_uniform_(m.weight).double()
+        nn.init.zeros_(m.bias).double()
