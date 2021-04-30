@@ -346,7 +346,7 @@ def main(emb_dim:int,
     # setting up optimizer
     if is_adv:
     # optimizer = optim.Adam(model.parameters([param for param in model.parameters() if param.requires_grad == True]), lr=0.01)
-        opt_fn = partial(torch.optim.Adagrad)
+        opt_fn = partial(torch.optim.Adam)
         optimizer = make_opt(model, opt_fn, lr=0.01)
     else:
         optimizer = optim.Adam(model.parameters([param for param in model.parameters() if param.requires_grad == True]),
