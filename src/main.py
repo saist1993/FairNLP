@@ -216,7 +216,7 @@ def main(emb_dim:int,
     np.random.seed(seed)
     torch.backends.cudnn.deterministic = True
     torch.backends.cudnn.benchmark = False
-    # torch.backends.cudnn.enabled = False
+    torch.backends.cudnn.enabled = False
     device = resolve_device() # if cuda: then cuda else cpu
 
 
