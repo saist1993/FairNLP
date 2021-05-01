@@ -148,6 +148,7 @@ def get_pretrained_embedding(initial_embedding, pretrained_vectors, vocab, devic
 @click.option('-classifier_learning_rate_second_phase', '--classifier_learning_rate_second_phase', type=float, default=0.01, help="changes the learning rate of main task classifier in second phase")
 @click.option('-trim_data', '--trim_data', type=bool, default=False, help="decreases the trainging data in  bias_in_bios to 15000")
 @click.option('-eps_scale', '--eps_scale', type=str, default="constant", help="constant/linear. The way eps should decrease with iteration.")
+@click.option('-optimizer', '--optimizer', type=str, default="adam", help="only works when adv is True")
 
 
 def main(emb_dim:int,
@@ -190,7 +191,8 @@ def main(emb_dim:int,
          encoder_learning_rate_second_phase:float,
          classifier_learning_rate_second_phase:float,
          trim_data:bool,
-         eps_scale:str
+         eps_scale:str,
+         optimizer:str
          ):
     if use_wandb:
         import wandb
@@ -346,7 +348,10 @@ def main(emb_dim:int,
     # setting up optimizer
     if is_adv:
     # optimizer = optim.Adam(model.parameters([param for param in model.parameters() if param.requires_grad == True]), lr=0.01)
-        opt_fn = partial(torch.optim.Adagrad)
+        if optimizer.lower() == 'adagrad':
+            opt_fn = partial(torch.optim.Adagrad)
+        elif optimizer.lower() == 'adam':
+            opt_fn = partial(torch.optim.Adam)
         optimizer = make_opt(model, opt_fn, lr=0.01)
     else:
         optimizer = optim.Adam(model.parameters([param for param in model.parameters() if param.requires_grad == True]),
