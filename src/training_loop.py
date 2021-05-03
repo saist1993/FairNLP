@@ -324,17 +324,19 @@ def train_adv_three_phase_custom(model, iterator, optimizer, criterion, device, 
             """
             #
 
-            unfreeze(optimizer, model=model, layer='encoder', lr=0.01)
-            unfreeze(optimizer, model=model, layer='classifier', lr=0.01)
-            unfreeze(optimizer, model=model, layer='adversary', lr=0.01)
+            # unfreeze(optimizer, model=model, layer='encoder', lr=0.01)
+            # unfreeze(optimizer, model=model, layer='classifier', lr=0.01)
+            # unfreeze(optimizer, model=model, layer='adversary', lr=0.01)
 
             if phase == 'recover':
-                freeze(optimizer, model=model, layer='encoder')
-                # model.freeze_unfreeze_embedder(freeze=True)
+                # freeze(optimizer, model=model, layer='encoder')
+                model.freeze_unfreeze_embedder(freeze=True)
 
 
-            freeze(optimizer, model=model, layer='adversary')
+            # freeze(optimizer, model=model, layer='adversary')
+            model.freeze_unfreeze_adv(freeze=True)
             optimizer.zero_grad()
+
             preds = model(text, lengths)
             if return_hidden:
                 predictions, aux_predictions1, hidden = preds
@@ -347,16 +349,18 @@ def train_adv_three_phase_custom(model, iterator, optimizer, criterion, device, 
                 loss_main = criterion(predictions, labels)
             loss_main.backward()
             optimizer.step()
-            # model.freeze_unfreeze_adv(freeze=False)
-            unfreeze(optimizer, model=model, layer='adversary', lr=0.01)
+
+            # unfreeze(optimizer, model=model, layer='adversary', lr=0.01)
+            model.freeze_unfreeze_adv(freeze=False)
+
             # -- Training ends ---
 
             # -- Train freeze(E) + Adv
             optimizer.zero_grad()
-            # model.freeze_unfreeze_classifier(freeze=True)
-            # model.freeze_unfreeze_embedder(freeze=True)
-            freeze(optimizer, model=model, layer='encoder')
-            freeze(optimizer, model=model, layer='classifier')
+            model.freeze_unfreeze_classifier(freeze=True)
+            model.freeze_unfreeze_embedder(freeze=True)
+            # freeze(optimizer, model=model, layer='encoder')
+            # freeze(optimizer, model=model, layer='classifier')
             if return_hidden:
                 predictions, aux_predictions, hidden = model(text, lengths)
             else:
@@ -373,13 +377,13 @@ def train_adv_three_phase_custom(model, iterator, optimizer, criterion, device, 
 
             loss_aux.backward()
 
-            enc_grad_norm = get_enc_grad_norm(model)
+            # enc_grad_norm = get_enc_grad_norm(model)
 
             optimizer.step()
-            # model.freeze_unfreeze_embedder(freeze=False)
-            # model.freeze_unfreeze_classifier(freeze=False)
-            unfreeze(optimizer, model=model, layer='encoder', lr=0.01)
-            unfreeze(optimizer, model=model, layer='classifier', lr=0.01)
+            model.freeze_unfreeze_embedder(freeze=False)
+            model.freeze_unfreeze_classifier(freeze=False)
+            # unfreeze(optimizer, model=model, layer='encoder', lr=0.01)
+            # unfreeze(optimizer, model=model, layer='classifier', lr=0.01)
 
             total_loss = loss_aux + loss_main # This should decrease
             # -- Training ends ---
@@ -388,9 +392,9 @@ def train_adv_three_phase_custom(model, iterator, optimizer, criterion, device, 
         elif phase == 'perturbate':
             ''' Gradient reversal layer'''
             #
-            # model.freeze_unfreeze_embedder(freeze=False)
-            # model.freeze_unfreeze_classifier(freeze=False)
-            # model.freeze_unfreeze_adv(freeze=False)
+            model.freeze_unfreeze_embedder(freeze=False)
+            model.freeze_unfreeze_classifier(freeze=False)
+            model.freeze_unfreeze_adv(freeze=False)
             try:
                 encoder_lr = other_params['encoder_lr']
                 classifier_lr = other_params['classifier_lr']
@@ -400,9 +404,9 @@ def train_adv_three_phase_custom(model, iterator, optimizer, criterion, device, 
                 classifier_lr = 0.01
                 adversary_lr = 0.01
 
-            unfreeze(optimizer, model=model, layer='encoder', lr=encoder_learning_rate_second_phase)
-            unfreeze(optimizer, model=model, layer='classifier', lr=classifier_learning_rate_second_phase)
-            unfreeze(optimizer, model=model, layer='adversary', lr=adversary_lr)
+            # unfreeze(optimizer, model=model, layer='encoder', lr=encoder_learning_rate_second_phase)
+            # unfreeze(optimizer, model=model, layer='classifier', lr=classifier_learning_rate_second_phase)
+            # unfreeze(optimizer, model=model, layer='adversary', lr=adversary_lr)
 
             # """
             #     Fake run just to get grad norms
