@@ -362,7 +362,9 @@ def train_adv_three_phase_custom(model, iterator, optimizer, criterion, device, 
             # enc_grad_norm = get_enc_grad_norm(model)
 
             optimizer.step()
-            model.freeze_unfreeze_embedder(freeze=False)
+            if phase != 'recover':
+                model.freeze_unfreeze_embedder(freeze=False)
+
             model.freeze_unfreeze_classifier(freeze=False)
 
             # freeze(optimizer, model=model, layer='adversary')
