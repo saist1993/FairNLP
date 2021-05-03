@@ -333,25 +333,7 @@ def train_adv_three_phase_custom(model, iterator, optimizer, criterion, device, 
                 model.freeze_unfreeze_embedder(freeze=True)
 
 
-            # freeze(optimizer, model=model, layer='adversary')
-            model.freeze_unfreeze_adv(freeze=True)
-            optimizer.zero_grad()
 
-            preds = model(text, lengths)
-            if return_hidden:
-                predictions, aux_predictions1, hidden = preds
-            else:
-                predictions, aux_predictions1= preds
-
-            if is_regression:
-                loss_main = criterion(predictions.squeeze(), labels.squeeze())
-            else:
-                loss_main = criterion(predictions, labels)
-            loss_main.backward()
-            optimizer.step()
-
-            # unfreeze(optimizer, model=model, layer='adversary', lr=0.01)
-            model.freeze_unfreeze_adv(freeze=False)
 
             # -- Training ends ---
 
@@ -382,6 +364,26 @@ def train_adv_three_phase_custom(model, iterator, optimizer, criterion, device, 
             optimizer.step()
             model.freeze_unfreeze_embedder(freeze=False)
             model.freeze_unfreeze_classifier(freeze=False)
+
+            # freeze(optimizer, model=model, layer='adversary')
+            model.freeze_unfreeze_adv(freeze=True)
+            optimizer.zero_grad()
+
+            preds = model(text, lengths)
+            if return_hidden:
+                predictions, aux_predictions1, hidden = preds
+            else:
+                predictions, aux_predictions1 = preds
+
+            if is_regression:
+                loss_main = criterion(predictions.squeeze(), labels.squeeze())
+            else:
+                loss_main = criterion(predictions, labels)
+            loss_main.backward()
+            optimizer.step()
+
+            # unfreeze(optimizer, model=model, layer='adversary', lr=0.01)
+            model.freeze_unfreeze_adv(freeze=False)
             # unfreeze(optimizer, model=model, layer='encoder', lr=0.01)
             # unfreeze(optimizer, model=model, layer='classifier', lr=0.01)
 
