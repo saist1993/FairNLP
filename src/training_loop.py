@@ -366,6 +366,7 @@ def train_adv_three_phase_custom(model, iterator, optimizer, criterion, device, 
                 model.freeze_unfreeze_embedder(freeze=False)
 
             model.freeze_unfreeze_classifier(freeze=False)
+            unfreeze(optimizer, model=model, layer='classifier', lr=0.02)
 
             # freeze(optimizer, model=model, layer='adversary')
             model.freeze_unfreeze_adv(freeze=True)
