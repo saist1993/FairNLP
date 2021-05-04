@@ -149,6 +149,7 @@ def get_pretrained_embedding(initial_embedding, pretrained_vectors, vocab, devic
 @click.option('-trim_data', '--trim_data', type=bool, default=False, help="decreases the trainging data in  bias_in_bios to 15000")
 @click.option('-eps_scale', '--eps_scale', type=str, default="constant", help="constant/linear. The way eps should decrease with iteration.")
 @click.option('-optimizer', '--optimizer', type=str, default="adam", help="only works when adv is True")
+@click.option('-lr', '--lr', type=float, default=0.01, help="main optimizer lr")
 
 
 def main(emb_dim:int,
@@ -192,7 +193,8 @@ def main(emb_dim:int,
          classifier_learning_rate_second_phase:float,
          trim_data:bool,
          eps_scale:str,
-         optimizer:str
+         optimizer:str,
+         lr:float
          ):
     if use_wandb:
         import wandb
@@ -356,7 +358,7 @@ def main(emb_dim:int,
             opt_fn = partial(torch.optim.SGD)
         else:
             raise CustomError("no optimizer selected")
-        optimizer = make_opt(model, opt_fn, lr=0.1)
+        optimizer = make_opt(model, opt_fn, lr=lr)
     else:
         optimizer = optim.Adam(model.parameters([param for param in model.parameters() if param.requires_grad == True]),
                                lr=0.01)
