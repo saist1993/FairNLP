@@ -331,11 +331,33 @@ def train_adv_three_phase_custom(model, iterator, optimizer, criterion, device, 
             if phase == 'recover':
                 # freeze(optimizer, model=model, layer='encoder')
                 model.freeze_unfreeze_embedder(freeze=True)
+            else:
+                model.freeze_unfreeze_embedder(freeze=False)
+
+            # freeze(optimizer, model=model, layer='adversary')
+            model.freeze_unfreeze_adv(freeze=True)
+            model.freeze_unfreeze_classifier(freeze=False)
+
+            optimizer.zero_grad()
+            preds = model(text, lengths)
+            if return_hidden:
+                predictions, aux_predictions1, hidden = preds
+            else:
+                predictions, aux_predictions1 = preds
+            if is_regression:
+                loss_main = criterion(predictions.squeeze(), labels.squeeze())
+            else:
+                loss_main = criterion(predictions, labels)
+            loss_main.backward()
+            optimizer.step()
+
+            # unfreeze(optimizer, model=model, layer='adversary', lr=0.01)
+            model.freeze_unfreeze_adv(freeze=False)
 
 
+            # unfreeze(optimizer, model=model, layer='encoder', lr=0.01)
+            # unfreeze(optimizer, model=model, layer='classifier', lr=0.01)
 
-
-            # -- Training ends ---
 
             # -- Train freeze(E) + Adv
             optimizer.zero_grad()
@@ -362,35 +384,17 @@ def train_adv_three_phase_custom(model, iterator, optimizer, criterion, device, 
             # enc_grad_norm = get_enc_grad_norm(model)
 
             optimizer.step()
-            if phase != 'recover':
-                model.freeze_unfreeze_embedder(freeze=False)
 
-            model.freeze_unfreeze_classifier(freeze=False)
+
+            # if phase != 'recover':
+            #     model.freeze_unfreeze_embedder(freeze=False)
+
+            # model.freeze_unfreeze_classifier(freeze=False)
 
             # if phase == 'recover':
             #         unfreeze(optimizer, model=model, layer='classifier', lr=0.005)
 
-            # freeze(optimizer, model=model, layer='adversary')
-            model.freeze_unfreeze_adv(freeze=True)
-            optimizer.zero_grad()
 
-            preds = model(text, lengths)
-            if return_hidden:
-                predictions, aux_predictions1, hidden = preds
-            else:
-                predictions, aux_predictions1 = preds
-
-            if is_regression:
-                loss_main = criterion(predictions.squeeze(), labels.squeeze())
-            else:
-                loss_main = criterion(predictions, labels)
-            loss_main.backward()
-            optimizer.step()
-
-            # unfreeze(optimizer, model=model, layer='adversary', lr=0.01)
-            model.freeze_unfreeze_adv(freeze=False)
-            # unfreeze(optimizer, model=model, layer='encoder', lr=0.01)
-            # unfreeze(optimizer, model=model, layer='classifier', lr=0.01)
 
             total_loss = loss_aux + loss_main # This should decrease
             # -- Training ends ---
