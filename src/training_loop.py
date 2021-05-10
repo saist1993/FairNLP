@@ -338,30 +338,30 @@ def train_adv_three_phase_custom(model, iterator, optimizer, criterion, device, 
             # -- Training ends ---
 
             # -- Train freeze(E) + Adv
-            # optimizer.zero_grad()
-            # model.freeze_unfreeze_classifier(freeze=True)
-            # model.freeze_unfreeze_embedder(freeze=True)
-            # # freeze(optimizer, model=model, layer='encoder')
-            # # freeze(optimizer, model=model, layer='classifier')
-            # if return_hidden:
-            #     predictions, aux_predictions, hidden = model(text, lengths)
-            # else:
-            #     predictions, aux_predictions = model(text, lengths)
-            #
-            # # if phase == 'recover':
-            # #     if not torch.equal(torch.argmax(aux_predictions1, dim=1) , torch.argmax(aux_predictions, dim=1)):
-            # #         print("something wrong")
-            #
-            # if is_regression:
-            #     loss_aux = criterion(aux_predictions.squeeze(), aux.squeeze())
-            # else:
-            #     loss_aux = criterion(aux_predictions, aux)
-            #
-            # loss_aux.backward()
-            #
-            # # enc_grad_norm = get_enc_grad_norm(model)
-            #
-            # optimizer.step()
+            optimizer.zero_grad()
+            model.freeze_unfreeze_classifier(freeze=True)
+            model.freeze_unfreeze_embedder(freeze=True)
+            # freeze(optimizer, model=model, layer='encoder')
+            # freeze(optimizer, model=model, layer='classifier')
+            if return_hidden:
+                predictions, aux_predictions, hidden = model(text, lengths)
+            else:
+                predictions, aux_predictions = model(text, lengths)
+
+            # if phase == 'recover':
+            #     if not torch.equal(torch.argmax(aux_predictions1, dim=1) , torch.argmax(aux_predictions, dim=1)):
+            #         print("something wrong")
+
+            if is_regression:
+                loss_aux = criterion(aux_predictions.squeeze(), aux.squeeze())
+            else:
+                loss_aux = criterion(aux_predictions, aux)
+
+            loss_aux.backward()
+
+            # enc_grad_norm = get_enc_grad_norm(model)
+
+            optimizer.step()
             if phase != 'recover':
                 model.freeze_unfreeze_embedder(freeze=False)
 
