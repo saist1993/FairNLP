@@ -2,6 +2,7 @@
 
 import re
 import warnings
+import numpy as np
 from tqdm import tqdm
 from typing import List, Dict
 
@@ -229,6 +230,7 @@ class TextClassificationDataset(torch.utils.data.Dataset):
         self.data = data
         self.vocab = vocab
         self.transforms = transforms  # (label_transforms, tokens_transforms)
+        # can I do some static mechanism to find all y and g;s
 
     def __getitem__(self, i):
         label = self.data[i][0]
@@ -269,3 +271,28 @@ def get_enc_grad_norm(model):
 
         tn = tn ** (1. / 2)
         return tn
+
+
+def equal_odds(preds, y, s, epsilon=0.0):
+    """
+
+    :param preds: output/prediction of the model
+    :param y: actual/ground/gold label
+    :param s: aux output/ protected demographic attribute
+    :param epsilon:
+    :return:
+    """
+
+    unique_classes = torch.unique(y) # For example: [doctor, nurse, engineer]
+    fairness = torch.zeros(s.shape)
+    unique_groups = torch.unique(s) # For example: [Male, Female]
+
+    for uc in unique_classes: # iterating over each class say: uc=doctor for the first iteration
+        positive_rate = torch.mean((preds[y==uc] == uc).float()) # prob(pred=doctor/y=doctor)
+        for group in unique_groups: # iterating over each group say: group=male for the firt iteration
+            mask_pos = torch.logical_and(y==uc, s==group) # find instances with y=doctor and s=male
+            g_fairness_pos = torch.mean((preds[mask_pos] == uc).float()) - positive_rate
+            g_fairness_pos = torch.sign(g_fairness_pos) * torch.clip(torch.abs(g_fairness_pos) - epsilon, 0, None)
+            fairness[mask_pos] = g_fairness_pos
+
+    return fairness

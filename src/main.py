@@ -150,6 +150,7 @@ def get_pretrained_embedding(initial_embedding, pretrained_vectors, vocab, devic
 @click.option('-eps_scale', '--eps_scale', type=str, default="constant", help="constant/linear. The way eps should decrease with iteration.")
 @click.option('-optimizer', '--optimizer', type=str, default="adam", help="only works when adv is True")
 @click.option('-lr', '--lr', type=float, default=0.01, help="main optimizer lr")
+@click.option('-fair_grad', '--fair_grad', type=bool, default=False, help="implements the fair sgd and training loop")
 
 
 def main(emb_dim:int,
@@ -194,7 +195,8 @@ def main(emb_dim:int,
          trim_data:bool,
          eps_scale:str,
          optimizer:str,
-         lr:float
+         lr:float,
+         fair_grad:bool
          ):
     if use_wandb:
         import wandb
@@ -264,6 +266,9 @@ def main(emb_dim:int,
 
     output_dim = number_of_labels
     input_dim = len(vocab)
+    if fair_grad:
+        hidden_loss=False
+        is_adv=False
 
     if model == 'bilstm':
         model_params = {
@@ -377,6 +382,10 @@ def main(emb_dim:int,
 
 
     if train_main_model:
+
+
+
+
         other_params = {
             'is_adv': is_adv,
             'loss_aux_scale': adv_loss_scale,
@@ -395,9 +404,11 @@ def main(emb_dim:int,
             'encoder_learning_rate_second_phase': encoder_learning_rate_second_phase,
             'classifier_learning_rate_second_phase': classifier_learning_rate_second_phase,
             'eps':eps,
-            'eps_scale': eps_scale
-
+            'eps_scale': eps_scale,
+            'fair_grad': fair_grad
         }
+
+
 
         if is_adv:
             best_test_acc, best_valid_acc, test_acc_at_best_valid_acc = three_phase_training_loop(
