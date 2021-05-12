@@ -184,6 +184,9 @@ def train_fair_grad(model, iterator, optimizer, criterion, device, accuracy_calc
     all_aux = torch.cat(all_aux, out=torch.Tensor(len(all_aux), all_aux[0].shape[0], device=device))
     all_labels = torch.cat(all_labels, out=torch.Tensor(len(all_labels), all_labels[0].shape[0], device=device))
 
+    all_preds = generate_predictions(model, iterator, device)
+    per_example_fairness = equal_odds(preds=all_preds, y=all_labels, s=all_aux, epsilon=0.0)
+
     for iteration_number, (labels, text, lengths, aux) in tqdm(enumerate(iterator)):
         mask_start_position = iteration_number*batch_size
         mask_end_position = min((iteration_number+1)*batch_size, all_labels.shape[0])
@@ -196,17 +199,21 @@ def train_fair_grad(model, iterator, optimizer, criterion, device, accuracy_calc
         predictions = model(text, lengths)
 
         # generate all prediction to be used in fair_grad
-        all_preds = generate_predictions(model, iterator, device)
-        per_example_fairness = equal_odds(preds=all_preds, y=all_labels, s=all_aux, epsilon=0.0)
+
         # generate a mask to put on per_example_fairness such that it corresponds to example in the current batch.
         if is_regression:
             loss = criterion(predictions.squeeze(), labels.squeeze())
         else:
             loss = criterion(predictions, labels)
 
+        loss = torch.mean(loss*(1-per_example_fairness[mask_start_position:mask_end_position]))
         loss.backward()
         optimizer.step()
         acc = accuracy_calculation_function(predictions, labels)
+
+        all_preds = generate_predictions(model, iterator, device)
+        per_example_fairness = per_example_fairness + equal_odds(preds=all_preds, y=all_labels, s=all_aux, epsilon=0.0)
+
 
         epoch_loss += loss.item()
         epoch_acc += acc.item()
