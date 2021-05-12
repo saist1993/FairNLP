@@ -372,7 +372,10 @@ def main(emb_dim:int,
         criterion = nn.MSELoss()
         if use_wandb: wandb.log({'loss': 'MSEloss'})
     else:
-        criterion = nn.CrossEntropyLoss()
+        if fair_grad:
+            criterion = nn.CrossEntropyLoss(reduction='none')
+        else:
+            criterion = nn.CrossEntropyLoss()
         if use_wandb: wandb.log({'loss': 'CrossEntropy'})
 
 
