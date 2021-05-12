@@ -3,6 +3,7 @@ import torch
 import numpy as np
 from tqdm.auto import tqdm
 from typing import List, Union
+from utils import equal_odds
 from models import initialize_parameters
 
 
@@ -154,6 +155,63 @@ def train_adv(model, iterator, optimizer, criterion, device, accuracy_calculatio
 
     return np.mean(epoch_total_loss), np.mean(epoch_loss_main), np.mean(epoch_acc_main), np.mean(epoch_loss_aux), np.mean(epoch_acc_aux)
 
+
+def train_fair_grad(model, iterator, optimizer, criterion, device, accuracy_calculation_function, other_params):
+    """
+    Very similar to adv train. But here the model has no adv. branch.
+    But the aux output is used as a part of the loss function itself.
+    """
+    epoch_loss = 0
+    epoch_acc = 0
+    batch_size = 0 # a hack is implemented to figure out first batch size.
+    batch_size_flag = True
+    model.train()
+    is_regression = other_params['is_regression']
+
+    # get all_aux, all_labels -> they represent aux over the whole data, and labels over the whole data
+    all_aux, all_labels = [], []
+
+    for labels, text, lengths, aux in tqdm(iterator):
+        if batch_size_flag:
+            batch_size = len(labels)
+            batch_size_flag = False
+        labels = labels.to(device)
+        aux = aux.to(device)
+        all_aux.append(aux)
+        all_labels.append(labels)
+
+    # flattening all_aux and all_labels
+    all_aux = torch.cat(all_aux, out=torch.Tensor(len(all_aux), all_aux[0].shape[0], device=device))
+    all_labels = torch.cat(all_labels, out=torch.Tensor(len(all_labels), all_labels[0].shape[0], device=device))
+
+    for iteration_number, (labels, text, lengths, aux) in tqdm(enumerate(iterator)):
+        mask_start_position = iteration_number*batch_size
+        mask_end_position = min((iteration_number+1)*batch_size, all_labels.shape[0])
+
+        labels = labels.to(device)
+        text = text.to(device)
+        # aux = aux.to(device) # since it is not used currently
+        optimizer.zero_grad()
+
+        predictions = model(text, lengths)
+
+        # generate all prediction to be used in fair_grad
+        all_preds = generate_predictions(model, iterator, device)
+        per_example_fairness = equal_odds(preds=all_preds, y=all_labels, s=all_aux, epsilon=0.0)
+        # generate a mask to put on per_example_fairness such that it corresponds to example in the current batch.
+        if is_regression:
+            loss = criterion(predictions.squeeze(), labels.squeeze())
+        else:
+            loss = criterion(predictions, labels)
+
+        loss.backward()
+        optimizer.step()
+        acc = accuracy_calculation_function(predictions, labels)
+
+        epoch_loss += loss.item()
+        epoch_acc += acc.item()
+
+    return epoch_loss / len(iterator), epoch_acc / len(iterator)
 
 
 def train_adv_three_phase(model, iterator, optimizer, criterion, device, accuracy_calculation_function, phase, other_params):
@@ -476,121 +534,6 @@ def train_adv_three_phase_custom(model, iterator, optimizer, criterion, device, 
            epoch_acc_main/ len(iterator), epoch_acc_aux/ len(iterator)
 
 
-def train_adv_three_phase_custom_with_noise(model, iterator, optimizer, criterion, device, accuracy_calculation_function, phase, other_params):
-
-    model.train()
-    is_regression = other_params['is_regression']
-    loss_aux_scale = other_params["loss_aux_scale"]
-
-    epoch_loss_main = 0
-    epoch_acc_main = 0
-    epoch_loss_aux = 0
-    epoch_acc_aux = 0
-    # print(phase)
-
-    for labels, text, lengths, aux in tqdm(iterator):
-        labels = labels.to(device)
-        text = text.to(device)
-        aux = aux.to(device)
-
-        if phase == 'initial' or phase == 'recover':
-            """
-            initial phase:
-                Train Embedder + Classifier for one batch
-                Train Freeze(Embedder) + Adv for one batch
-            recover phase
-                Train Freeze (Embedder) + Classifier
-                Train Freeze (Embedder) + Adv
-            """
-            #
-            if phase == 'recover':
-                freeze(optimizer, model=model, layer='encoder')
-                # model.freeze_unfreeze_embedder(freeze=True)
-
-            # --- train Embedder and Classifier
-            # model.freeze_unfreeze_adv(freeze=True)
-            freeze(optimizer, model=model, layer='adversary')
-            optimizer.zero_grad()
-            predictions, aux_predictions1, hidden = model(text, lengths)
-
-            if is_regression:
-                loss_main = criterion(predictions.squeeze(), labels.squeeze())
-            else:
-                loss_main = criterion(predictions, labels)
-            loss_main.backward()
-            optimizer.step()
-            # model.freeze_unfreeze_adv(freeze=False)
-            unfreeze(optimizer, model=model, layer='adversary', lr=0.01)
-            # -- Training ends ---
-
-            # -- Train freeze(E) + Adv
-            optimizer.zero_grad()
-            # model.freeze_unfreeze_classifier(freeze=True)
-            # model.freeze_unfreeze_embedder(freeze=True)
-            freeze(optimizer, model=model, layer='encoder')
-            freeze(optimizer, model=model, layer='classifier')
-            predictions, aux_predictions = model(text, lengths)
-
-            # if phase == 'recover':
-            #     if not torch.equal(torch.argmax(aux_predictions1, dim=1) , torch.argmax(aux_predictions, dim=1)):
-            #         print("something wrong")
-
-            if is_regression:
-                loss_aux = criterion(aux_predictions.squeeze(), aux.squeeze())
-            else:
-                loss_aux = criterion(aux_predictions, aux)
-
-            loss_aux.backward()
-            optimizer.step()
-            # model.freeze_unfreeze_embedder(freeze=False)
-            # model.freeze_unfreeze_classifier(freeze=False)
-            unfreeze(optimizer, model=model, layer='encoder', lr=0.01)
-            unfreeze(optimizer, model=model, layer='classifier', lr=0.01)
-            # -- Training ends ---
-
-
-        elif phase == 'perturbate':
-            ''' Gradient reversal layer'''
-            #
-            # model.freeze_unfreeze_embedder(freeze=False)
-            # model.freeze_unfreeze_classifier(freeze=False)
-            # model.freeze_unfreeze_adv(freeze=False)
-            unfreeze(optimizer, model=model, layer='encoder', lr=0.01)
-            unfreeze(optimizer, model=model, layer='classifier', lr=0.01)
-            unfreeze(optimizer, model=model, layer='adversary', lr=0.01)
-
-            optimizer.zero_grad()
-
-
-
-            predictions, aux_predictions = model(text, lengths, gradient_reversal=True)
-            if is_regression:
-                loss_main = criterion(predictions.squeeze(), labels.squeeze())
-                loss_aux = criterion(aux_predictions.squeeze(), aux.squeeze())
-            else:
-                loss_main = criterion(predictions, labels)
-                loss_aux = criterion(aux_predictions, aux)
-
-            total_loss = loss_main + (loss_aux_scale*loss_aux)
-            total_loss.backward()
-            optimizer.step()
-        #
-        # if phase != 'recover':
-        #     loss_aux = torch.zeros(1)
-
-        acc_main = accuracy_calculation_function(predictions, labels)
-        acc_aux = accuracy_calculation_function(aux_predictions, aux)
-
-        # now we have acc_main, acc_aux, loss_main, loss_aux .. Log this
-
-        epoch_loss_main += loss_main.item()
-        epoch_acc_main += acc_main.item()
-        epoch_loss_aux += loss_aux.item()
-        epoch_acc_aux += acc_aux.item()
-
-    return epoch_loss_main/ len(iterator), epoch_loss_aux/ len(iterator), epoch_acc_main/ len(iterator), epoch_acc_aux/ len(iterator)
-
-
 def evaluate_adv(model, iterator, criterion, device, accuracy_calculation_function, other_params):
 
     epoch_loss_main = []
@@ -651,11 +594,26 @@ def evaluate_adv(model, iterator, criterion, device, accuracy_calculation_functi
     return np.mean(epoch_total_loss ), np.mean(epoch_loss_main), np.mean(epoch_acc_main), np.mean(epoch_loss_aux), np.mean(epoch_acc_aux)
 
 
+def generate_predictions(model, iterator, device):
+    all_preds = []
+    with torch.no_grad():
+        for labels, text, lengths, aux in tqdm(iterator):
+            text = text.to(device)
+            predictions = model(text, lengths)
+            all_preds.append(predictions.argmax(1))
+    # flattening all_preds
+    all_preds = torch.cat(all_preds, out=torch.Tensor(len(all_preds), all_preds[0].shape[0], device=device))
+    return all_preds
+
+
+
+
 def freeze(opt: torch.optim, layer: str, model: torch.nn.Module):
     opt.param_groups[model.legend[layer]]['lr'] = 0
 
 def unfreeze(opt: torch.optim, layer: int, lr, model: torch.nn.Module):
     opt.param_groups[model.legend[layer]]['lr'] = lr
+
 
 
 def basic_training_loop(
@@ -691,6 +649,11 @@ def basic_training_loop(
         return_hidden = other_params['return_hidden']
     except KeyError:
         return_hidden = False
+
+    try:
+        fair_grad = other_params['fair_grad']
+    except:
+        fair_grad = False
 
     print(f"is adv: {is_adv}")
 
@@ -818,14 +781,13 @@ def basic_training_loop(
                     })
 
         else:
-
-
-
-
             current_scale = get_current_eps(epoch_number=epoch,
                                               last_scale=current_scale)
             other_params['eps'] = current_scale
-            train_loss, train_acc = train(model, train_iterator, optimizer, criterion, device, accuracy_calculation_function, other_params)
+            if fair_grad:
+                train_loss, train_acc = train_fair_grad(model, train_iterator, optimizer, criterion, device, accuracy_calculation_function, other_params)
+            else:
+                train_loss, train_acc = train(model, train_iterator, optimizer, criterion, device, accuracy_calculation_function, other_params)
 
             if model.noise_layer:
                 model.eps = original_eps
@@ -867,6 +829,8 @@ def basic_training_loop(
 
 
     return best_test_acc, best_valid_acc, test_acc_at_best_valid_acc
+
+
 
 
 def three_phase_training_loop(
