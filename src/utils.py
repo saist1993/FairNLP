@@ -273,7 +273,7 @@ def get_enc_grad_norm(model):
         return tn
 
 
-def equal_odds(preds, y, s, epsilon=0.0):
+def equal_odds(preds, y, s, device, epsilon=0.0):
     """
 
     :param preds: output/prediction of the model
@@ -284,7 +284,7 @@ def equal_odds(preds, y, s, epsilon=0.0):
     """
 
     unique_classes = torch.unique(y) # For example: [doctor, nurse, engineer]
-    fairness = torch.zeros(s.shape)
+    fairness = torch.zeros(s.shape).to(device)
     unique_groups = torch.unique(s) # For example: [Male, Female]
 
     for uc in unique_classes: # iterating over each class say: uc=doctor for the first iteration
