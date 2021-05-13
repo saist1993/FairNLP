@@ -182,7 +182,7 @@ def train_fair_grad(model, iterator, optimizer, criterion, device, accuracy_calc
 
     # flattening all_aux and all_labels
     all_aux = torch.cat(all_aux, out=torch.Tensor(len(all_aux), all_aux[0].shape[0])).to(device)
-    all_labels = torch.cat(all_labels, out=torch.Tensor(len(all_labels), all_labels[0].shape[0], device=device))
+    all_labels = torch.cat(all_labels, out=torch.Tensor(len(all_labels), all_labels[0].shape[0])).to(device)
 
     all_preds = generate_predictions(model, iterator, device)
     per_example_fairness = equal_odds(preds=all_preds, y=all_labels, s=all_aux, epsilon=0.0)
