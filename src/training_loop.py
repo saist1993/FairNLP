@@ -242,6 +242,8 @@ def evaluate_fair_grad(model, iterator, criterion, device, accuracy_calculation_
             else:
                 loss = criterion(predictions, labels)
 
+            loss = torch.mean(loss)
+
             acc = accuracy_calculation_function(predictions, labels)
 
 
