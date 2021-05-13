@@ -609,7 +609,7 @@ def generate_predictions(model, iterator, device):
             predictions = model(text, lengths)
             all_preds.append(predictions.argmax(1))
     # flattening all_preds
-    all_preds = torch.cat(all_preds, out=torch.Tensor(len(all_preds), all_preds[0].shape[0], device=device))
+    all_preds = torch.cat(all_preds, out=torch.Tensor(len(all_preds), all_preds[0].shape[0])).to(device)
     return all_preds
 
 
