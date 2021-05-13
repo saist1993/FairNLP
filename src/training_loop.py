@@ -181,7 +181,7 @@ def train_fair_grad(model, iterator, optimizer, criterion, device, accuracy_calc
         all_labels.append(labels)
 
     # flattening all_aux and all_labels
-    all_aux = torch.cat(all_aux, out=torch.Tensor(len(all_aux), all_aux[0].shape[0], device=device))
+    all_aux = torch.cat(all_aux, out=torch.Tensor(len(all_aux), all_aux[0].shape[0])).to(device)
     all_labels = torch.cat(all_labels, out=torch.Tensor(len(all_labels), all_labels[0].shape[0], device=device))
 
     all_preds = generate_predictions(model, iterator, device)
