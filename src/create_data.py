@@ -473,7 +473,7 @@ class BiasinBiosSimpleAdv(WikiSimpleClassification):
         assert self.is_regression == False
 
         if self.trim_data:
-            train = self.read_data("../data/bias_in_bios/train.pickle")[:500]
+            train = self.read_data("../data/bias_in_bios/train.pickle")[:15000]
             dev = self.read_data("../data/bias_in_bios/dev.pickle")[:500]
             test = self.read_data("../data/bias_in_bios/test.pickle")[:500]
         else:
