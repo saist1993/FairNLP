@@ -286,13 +286,27 @@ def equal_odds(preds, y, s, device, epsilon=0.0):
     unique_classes = torch.unique(y) # For example: [doctor, nurse, engineer]
     fairness = torch.zeros(s.shape).to(device)
     unique_groups = torch.unique(s) # For example: [Male, Female]
-
+    group_fairness = {} # a dict which keeps a track on how fairness is changing
+    '''
+    it will have a structure of 
+    {
+        'doctor': {
+            'm' : 0.5, 
+            'f' : 0.6
+            }, 
+        'model': {
+        'm': 0.5,
+        'f': 0.7,
+        }
+    '''
     for uc in unique_classes: # iterating over each class say: uc=doctor for the first iteration
+        group_fairness[uc] = {}
         positive_rate = torch.mean((preds[y==uc] == uc).float()) # prob(pred=doctor/y=doctor)
         for group in unique_groups: # iterating over each group say: group=male for the firt iteration
             mask_pos = torch.logical_and(y==uc, s==group) # find instances with y=doctor and s=male
             g_fairness_pos = torch.mean((preds[mask_pos] == uc).float()) - positive_rate
             g_fairness_pos = torch.sign(g_fairness_pos) * torch.clip(torch.abs(g_fairness_pos) - epsilon, 0, None)
             fairness[mask_pos] = g_fairness_pos
+            group_fairness[uc][group] = g_fairness_pos
 
-    return fairness
+    return fairness, group_fairness

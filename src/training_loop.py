@@ -185,7 +185,7 @@ def train_fair_grad(model, iterator, optimizer, criterion, device, accuracy_calc
     all_labels = torch.cat(all_labels, out=torch.Tensor(len(all_labels), all_labels[0].shape[0])).to(device)
 
     all_preds = generate_predictions(model, iterator, device)
-    per_example_fairness = equal_odds(preds=all_preds, y=all_labels, s=all_aux, device=device, epsilon=0.0)
+    per_example_fairness, group_fairness = equal_odds(preds=all_preds, y=all_labels, s=all_aux, device=device, epsilon=0.0)
 
     for iteration_number, (labels, text, lengths, aux) in tqdm(enumerate(iterator)):
         mask_start_position = iteration_number*batch_size
@@ -211,8 +211,9 @@ def train_fair_grad(model, iterator, optimizer, criterion, device, accuracy_calc
         optimizer.step()
         acc = accuracy_calculation_function(predictions, labels)
 
-        all_preds = generate_predictions(model, iterator, device)
-        per_example_fairness = per_example_fairness + equal_odds(preds=all_preds, y=all_labels, s=all_aux, device=device, epsilon=0.0)
+        # all_preds = generate_predictions(model, iterator, device)
+        # interm_fairness, interm_group_fairness = equal_odds(preds=all_preds, y=all_labels, s=all_aux, device=device, epsilon=0.0)
+        # per_example_fairness = per_example_fairness + interm_fairness
 
 
         epoch_loss += loss.item()
