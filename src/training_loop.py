@@ -221,6 +221,35 @@ def train_fair_grad(model, iterator, optimizer, criterion, device, accuracy_calc
     return epoch_loss / len(iterator), epoch_acc / len(iterator)
 
 
+def evaluate_fair_grad(model, iterator, criterion, device, accuracy_calculation_function, other_params):
+    """evaluates for overall accuraacy as well as grms scores."""
+    epoch_loss = 0
+    epoch_acc = 0
+
+    is_regression = other_params['is_regression']
+    model.eval()
+
+    with torch.no_grad():
+        for iteration_number, (labels, text, lengths, aux) in tqdm(enumerate(iterator)):
+            labels = labels.to(device)
+            text = text.to(device)
+
+            predictions = model(text, lengths)
+
+            # loss = criterion(predictions, labels)
+            if is_regression:
+                loss = criterion(predictions.squeeze(), labels.squeeze())
+            else:
+                loss = criterion(predictions, labels)
+
+            acc = accuracy_calculation_function(predictions, labels)
+
+
+            epoch_loss += loss.item()
+            epoch_acc += acc
+
+    return epoch_loss / len(iterator), epoch_acc / len(iterator)
+
 def train_adv_three_phase(model, iterator, optimizer, criterion, device, accuracy_calculation_function, phase, other_params):
     print("using a three phase training loop")
     model.train()
@@ -793,13 +822,20 @@ def basic_training_loop(
             other_params['eps'] = current_scale
             if fair_grad:
                 train_loss, train_acc = train_fair_grad(model, train_iterator, optimizer, criterion, device, accuracy_calculation_function, other_params)
+                valid_loss, valid_acc = evaluate_fair_grad(model, dev_iterator, criterion, device, accuracy_calculation_function,
+                                                 other_params)
+                test_loss, test_acc = evaluate_fair_grad(model, test_iterator, criterion, device, accuracy_calculation_function,
+                                               other_params)
             else:
                 train_loss, train_acc = train(model, train_iterator, optimizer, criterion, device, accuracy_calculation_function, other_params)
+                if model.noise_layer:
+                    model.eps = original_eps
+                valid_loss, valid_acc = evaluate(model, dev_iterator, criterion, device, accuracy_calculation_function,
+                                                 other_params)
+                test_loss, test_acc = evaluate(model, test_iterator, criterion, device, accuracy_calculation_function,
+                                               other_params)
 
-            if model.noise_layer:
-                model.eps = original_eps
-            valid_loss, valid_acc = evaluate(model, dev_iterator, criterion, device, accuracy_calculation_function, other_params)
-            test_loss, test_acc = evaluate(model, test_iterator, criterion, device, accuracy_calculation_function, other_params)
+
 
             end_time = time.monotonic()
 
