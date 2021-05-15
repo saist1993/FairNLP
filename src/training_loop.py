@@ -712,7 +712,7 @@ def basic_training_loop(
 
     print(f"is adv: {is_adv}")
 
-    group_fairness, fairness_lookup = {}, []
+    group_fairness, fairness_lookup = {}, torch.zeros([1,1])
 
 
 
