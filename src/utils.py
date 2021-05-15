@@ -273,7 +273,7 @@ def get_enc_grad_norm(model):
         return tn
 
 
-def equal_odds(preds, y, s, device, epsilon=0.0):
+def equal_odds(preds, y, s, device, total_no_main_classes, total_no_aux_classes, epsilon=0.0):
     """
 
     :param preds: output/prediction of the model
@@ -283,10 +283,11 @@ def equal_odds(preds, y, s, device, epsilon=0.0):
     :return:
     """
 
-    unique_classes = torch.unique(y) # For example: [doctor, nurse, engineer]
+    unique_classes = torch.sort(torch.unique(y))[0] # For example: [doctor, nurse, engineer]
     fairness = torch.zeros(s.shape).to(device)
-    unique_groups = torch.unique(s) # For example: [Male, Female]
+    unique_groups = torch.sort(torch.unique(s))[0] # For example: [Male, Female]
     group_fairness = {} # a dict which keeps a track on how fairness is changing
+    fairness_lookup = torch.zeros([total_no_main_classes, total_no_aux_classes])
     '''
     it will have a structure of 
     {
@@ -308,5 +309,6 @@ def equal_odds(preds, y, s, device, epsilon=0.0):
             g_fairness_pos = torch.sign(g_fairness_pos) * torch.clip(torch.abs(g_fairness_pos) - epsilon, 0, None)
             fairness[mask_pos] = g_fairness_pos
             group_fairness[uc][group] = g_fairness_pos
+            fairness_lookup[int(uc.item()),int(group.item())] = g_fairness_pos
 
-    return fairness, group_fairness
+    return group_fairness, fairness_lookup
