@@ -156,10 +156,14 @@ def train_adv(model, iterator, optimizer, criterion, device, accuracy_calculatio
     return np.mean(epoch_total_loss), np.mean(epoch_loss_main), np.mean(epoch_acc_main), np.mean(epoch_loss_aux), np.mean(epoch_acc_aux)
 
 
-def train_fair_grad(model, iterator, optimizer, criterion, device, accuracy_calculation_function, other_params):
+def train_fair_grad(model, iterator, optimizer, criterion, device, accuracy_calculation_function, per_example_fairness,
+                    group_fairness, other_params):
     """
     Very similar to adv train. But here the model has no adv. branch.
     But the aux output is used as a part of the loss function itself.
+
+    Note that it is necessary that the data is not shuffled at every epoch. Every example should come in the same
+    order in every epoch.
     """
     epoch_loss = 0
     epoch_acc = 0
@@ -167,6 +171,7 @@ def train_fair_grad(model, iterator, optimizer, criterion, device, accuracy_calc
     batch_size_flag = True
     model.train()
     is_regression = other_params['is_regression']
+
 
     # get all_aux, all_labels -> they represent aux over the whole data, and labels over the whole data
     all_aux, all_labels = [], []
@@ -185,7 +190,8 @@ def train_fair_grad(model, iterator, optimizer, criterion, device, accuracy_calc
     all_labels = torch.cat(all_labels, out=torch.Tensor(len(all_labels), all_labels[0].shape[0])).to(device)
 
     all_preds = generate_predictions(model, iterator, device)
-    per_example_fairness, group_fairness = equal_odds(preds=all_preds, y=all_labels, s=all_aux, device=device, epsilon=0.0)
+    if not per_example_fairness:
+        per_example_fairness, group_fairness = equal_odds(preds=all_preds, y=all_labels, s=all_aux, device=device, epsilon=0.0)
 
     for iteration_number, (labels, text, lengths, aux) in tqdm(enumerate(iterator)):
         mask_start_position = iteration_number*batch_size
@@ -211,15 +217,15 @@ def train_fair_grad(model, iterator, optimizer, criterion, device, accuracy_calc
         optimizer.step()
         acc = accuracy_calculation_function(predictions, labels)
 
-        # all_preds = generate_predictions(model, iterator, device)
-        # interm_fairness, interm_group_fairness = equal_odds(preds=all_preds, y=all_labels, s=all_aux, device=device, epsilon=0.0)
-        # per_example_fairness = per_example_fairness + interm_fairness
+        all_preds = generate_predictions(model, iterator, device)
+        interm_fairness, interm_group_fairness = equal_odds(preds=all_preds, y=all_labels, s=all_aux, device=device, epsilon=0.0)
+        per_example_fairness = per_example_fairness + interm_fairness
 
 
         epoch_loss += loss.item()
         epoch_acc += acc.item()
 
-    return epoch_loss / len(iterator), epoch_acc / len(iterator)
+    return epoch_loss / len(iterator), epoch_acc / len(iterator), per_example_fairness, group_fairness
 
 
 def evaluate_fair_grad(model, iterator, criterion, device, accuracy_calculation_function, other_params):
@@ -696,6 +702,8 @@ def basic_training_loop(
 
     print(f"is adv: {is_adv}")
 
+    per_example_fairness, group_fairness = [], {}
+
 
 
     linearly_decrease_eps_till = int(n_epochs*.70)
@@ -824,7 +832,9 @@ def basic_training_loop(
                                               last_scale=current_scale)
             other_params['eps'] = current_scale
             if fair_grad:
-                train_loss, train_acc = train_fair_grad(model, train_iterator, optimizer, criterion, device, accuracy_calculation_function, other_params)
+                train_loss, train_acc, per_example_fairness, group_fairness =\
+                    train_fair_grad(model, train_iterator, optimizer, criterion, device, accuracy_calculation_function,
+                                    per_example_fairness, group_fairness, other_params)
                 valid_loss, valid_acc = evaluate_fair_grad(model, dev_iterator, criterion, device, accuracy_calculation_function,
                                                  other_params)
                 test_loss, test_acc = evaluate_fair_grad(model, test_iterator, criterion, device, accuracy_calculation_function,
