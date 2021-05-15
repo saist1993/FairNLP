@@ -218,7 +218,7 @@ def train_fair_grad(model, iterator, optimizer, criterion, device, accuracy_calc
 
         fairness = fairness_lookup[labels, aux]
 
-        loss = torch.mean(loss*(1-fairness))
+        loss = torch.mean(loss*(1-fairness.to(device)))
         loss.backward()
         optimizer.step()
         acc = accuracy_calculation_function(predictions, labels)
