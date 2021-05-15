@@ -526,7 +526,7 @@ class BiasinBiosSimpleAdv(WikiSimpleClassification):
         print("creating training data iterators")
         train_iterator = torch.utils.data.DataLoader(train_data,
                                                      self.batch_size,
-                                                     shuffle=True,
+                                                     shuffle=False,
                                                      collate_fn=self.collate
                                                      )
 
