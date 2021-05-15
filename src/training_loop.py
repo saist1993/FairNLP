@@ -191,7 +191,7 @@ def train_fair_grad(model, iterator, optimizer, criterion, device, accuracy_calc
     total_no_main_classes, total_no_aux_classes = len(torch.unique(all_labels)), len(torch.unique(all_aux))
 
     all_preds = generate_predictions(model, iterator, device)
-    if not fairness_lookup:
+    if not fairness_lookup.any():
         group_fairness, fairness_lookup = equal_odds(preds=all_preds, y=all_labels, s=all_aux, device=device,
                                                           total_no_main_classes=total_no_main_classes,
                                                           total_no_aux_classes=total_no_aux_classes,
