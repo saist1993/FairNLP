@@ -176,12 +176,20 @@ def train_fair_grad(model, iterator, optimizer, criterion, device, accuracy_calc
     # get all_aux, all_labels -> they represent aux over the whole data, and labels over the whole data
     all_aux, all_labels = [], []
 
-    for labels, text, lengths, aux in tqdm(iterator):
+    for items in tqdm(iterator):
+        if len(items) == 4:
+            labels, text, lengths, aux = items
+            labels = labels.to(device)
+            text = text.to(device)
+            aux = aux.to(device)
+        else:
+            labels, text, lengths, aux = items
+            labels = labels.to(device)
+            text = text.to(device)
+
         if batch_size_flag:
             batch_size = len(labels)
             batch_size_flag = False
-        labels = labels.to(device)
-        aux = aux.to(device)
         all_aux.append(aux)
         all_labels.append(labels)
 
@@ -197,9 +205,17 @@ def train_fair_grad(model, iterator, optimizer, criterion, device, accuracy_calc
                                                           total_no_aux_classes=total_no_aux_classes,
                                                           epsilon=0.0)
 
-    for iteration_number, (labels, text, lengths, aux) in tqdm(enumerate(iterator)):
-        mask_start_position = iteration_number*batch_size
-        mask_end_position = min((iteration_number+1)*batch_size, all_labels.shape[0])
+    for iteration_number, items in tqdm(enumerate(iterator)):
+        if len(items) == 4:
+            labels, text, lengths, aux = items
+            labels = labels.to(device)
+            text = text.to(device)
+            aux = aux.to(device)
+        else:
+            labels, text, lengths, aux = items
+            labels = labels.to(device)
+            text = text.to(device)
+
 
         labels = labels.to(device)
         text = text.to(device)
@@ -247,7 +263,18 @@ def evaluate_fair_grad(model, iterator, criterion, device, accuracy_calculation_
     model.eval()
 
     with torch.no_grad():
-        for iteration_number, (labels, text, lengths, aux) in tqdm(enumerate(iterator)):
+        for iteration_number, items in tqdm(enumerate(iterator)):
+            if len(items) == 4:
+                labels, text, lengths, aux = items
+                labels = labels.to(device)
+                text = text.to(device)
+                aux = aux.to(device)
+            else:
+                labels, text, lengths, aux = items
+                labels = labels.to(device)
+                text = text.to(device)
+
+
             labels = labels.to(device)
             text = text.to(device)
 
@@ -289,10 +316,16 @@ def train_adv_three_phase(model, iterator, optimizer, criterion, device, accurac
     epoch_loss_total = 0
     print(phase)
 
-    for labels, text, lengths, aux in tqdm(iterator):
-        labels = labels.to(device)
-        text = text.to(device)
-        aux = aux.to(device)
+    for items in tqdm(iterator):
+        if len(items) == 4:
+            labels, text, lengths, aux = items
+            labels = labels.to(device)
+            text = text.to(device)
+            aux = aux.to(device)
+        else:
+            labels, text, lengths, aux = items
+            labels = labels.to(device)
+            text = text.to(device)
 
         if phase == 'initial':
             """
