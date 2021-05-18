@@ -311,6 +311,8 @@ def equal_odds(preds, y, s, device, total_no_main_classes, total_no_aux_classes,
             group_fairness[uc][group] = g_fairness_pos
             fairness_lookup[int(uc.item()),int(group.item())] = g_fairness_pos
 
+    print(group_fairness)
+
     return group_fairness, fairness_lookup
 
 def calculate_grms(preds, y, s):
@@ -336,7 +338,6 @@ def calculate_grms(preds, y, s):
         for group in unique_groups:  # iterating over each group say: group=male for the firt iteration
             mask_pos = torch.logical_and(y == uc, s == group)  # find instances with y=doctor and s=male
             g_fairness_pos = torch.mean((preds[mask_pos] == uc).float())
-            print(g_fairness_pos)
             group_fairness[uc][group] = g_fairness_pos.item()
 
     scores = []
