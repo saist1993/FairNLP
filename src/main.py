@@ -71,7 +71,7 @@ def generate_data_iterator(dataset_name:str, **kwargs):
         return vocab, number_of_labels, train_iterator, dev_iterator, test_iterator
 
     elif dataset_name.lower() == 'bias_in_bios':
-        if kwargs['is_adv']:
+        if kwargs['use_adv_dataset']:
             dataset_creator = create_data.BiasinBiosSimpleAdv(dataset_name=dataset_name, **kwargs)
             vocab, number_of_labels, train_iterator, dev_iterator, test_iterator = dataset_creator.run()
             return vocab, number_of_labels, train_iterator, dev_iterator, test_iterator
@@ -152,6 +152,7 @@ def get_pretrained_embedding(initial_embedding, pretrained_vectors, vocab, devic
 @click.option('-lr', '--lr', type=float, default=0.01, help="main optimizer lr")
 @click.option('-fair_grad', '--fair_grad', type=bool, default=False, help="implements the fair sgd and training loop")
 @click.option('-reset_fairness', '--reset_fairness', type=bool, default=False, help="resets fairness every epoch. By default fairness is just added")
+@click.option('-use_adv_dataset', '--use_adv_dataset', type=bool, default=True, help="if True: output includes aux")
 
 
 def main(emb_dim:int,
@@ -198,9 +199,12 @@ def main(emb_dim:int,
          optimizer:str,
          lr:float,
          fair_grad:bool,
-         reset_fairness:bool
+         reset_fairness:bool,
+         use_adv_dataset:bool
          ):
 
+    if is_adv:
+        use_adv_dataset = True # forces the data to include aux information
     if use_wandb:
         import wandb
         wandb.init(project='bias_in_nlp', entity='magnet', config = click.get_current_context().params)
@@ -248,7 +252,7 @@ def main(emb_dim:int,
         'batch_size': batch_size,
         'is_regression': regression,
         'vocab': vocab,
-        'is_adv': is_adv,
+        'use_adv_dataset': use_adv_dataset,
         'trim_data': trim_data
     }
     vocab, number_of_labels, train_iterator, dev_iterator, test_iterator = \
@@ -388,9 +392,6 @@ def main(emb_dim:int,
 
 
     if train_main_model:
-
-
-
 
         other_params = {
             'is_adv': is_adv,
