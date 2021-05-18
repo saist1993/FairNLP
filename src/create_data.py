@@ -481,7 +481,7 @@ class BiasinBiosSimpleAdv(WikiSimpleClassification):
             dev = self.read_data("../data/bias_in_bios/dev.pickle")
             test = self.read_data("../data/bias_in_bios/test.pickle")
 
-        # Find all professional. Create a professional to id list
+        # Find all professional. Create a professional to id list.
         try:
             profession_to_id =  pickle.load(open(self.data_dir / Path('profession_to_id.pickle'), "rb"))
             all_profession = profession_to_id.keys()
