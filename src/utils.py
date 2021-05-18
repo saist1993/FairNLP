@@ -337,6 +337,7 @@ def calculate_grms(preds, y, s):
             g_fairness_pos = torch.mean((preds[mask_pos] == uc).float())
             group_fairness[uc][group] = g_fairness_pos.item()
 
+    print(group_fairness)
     scores = []
     for key,value in group_fairness.items():
         temp = [value_1 for key_1, value_1 in value.items()]
