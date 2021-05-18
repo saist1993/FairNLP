@@ -311,7 +311,6 @@ def equal_odds(preds, y, s, device, total_no_main_classes, total_no_aux_classes,
             group_fairness[uc][group] = g_fairness_pos
             fairness_lookup[int(uc.item()),int(group.item())] = g_fairness_pos
 
-    print(group_fairness)
 
     return group_fairness, fairness_lookup
 
