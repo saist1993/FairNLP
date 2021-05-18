@@ -200,6 +200,7 @@ def main(emb_dim:int,
          fair_grad:bool,
          reset_fairness:bool
          ):
+
     if use_wandb:
         import wandb
         wandb.init(project='bias_in_nlp', entity='magnet', config = click.get_current_context().params)

@@ -420,11 +420,16 @@ def train_adv_three_phase_custom(model, iterator, optimizer, criterion, device, 
     except KeyError:
         print("!!!!!!********** warning encoder and classifier second phase learning rate not set ****!!!!!")
 
-
-    for labels, text, lengths, aux in tqdm(iterator):
-        labels = labels.to(device)
-        text = text.to(device)
-        aux = aux.to(device)
+    for items in tqdm(iterator):
+        if len(items) == 4:
+            labels, text, lengths, aux = items
+            labels = labels.to(device)
+            text = text.to(device)
+            aux = aux.to(device)
+        else:
+            labels, text, lengths, aux = items
+            labels = labels.to(device)
+            text = text.to(device)
 
         if phase == 'initial' or phase == 'recover':
             """
