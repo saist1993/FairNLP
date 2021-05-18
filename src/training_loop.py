@@ -692,19 +692,21 @@ def evaluate_adv(model, iterator, criterion, device, accuracy_calculation_functi
             # loss = loss_main + (loss_aux_scale * loss_aux)
             # all_predictions.append(aux_predictions.squeeze(),labels, aux.squeeze(), )
             # acc = accuracy_calculation_function(predictions, labels)
-            if not is_post_hoc:
-                all_preds = torch.cat(all_preds, out=torch.Tensor(len(all_preds), all_preds[0].shape[0])).to(device)
-                y = torch.cat(y, out=torch.Tensor(len(y), y[0].shape[0])).to(device)
-                s = torch.cat(s, out=torch.Tensor(len(s), s[0].shape[0])).to(device)
-                grms = calculate_grms(all_preds, y, s)
-            else:
-                grms = 0.0
+
 
             epoch_loss_main.append(loss_main.item())
             epoch_acc_main.append(acc_main.item())
             epoch_loss_aux.append(loss_aux.item())
             epoch_acc_aux.append(acc_aux.item())
             epoch_total_loss.append(total_loss.item())
+
+        if not is_post_hoc:
+            all_preds = torch.cat(all_preds, out=torch.Tensor(len(all_preds), all_preds[0].shape[0])).to(device)
+            y = torch.cat(y, out=torch.Tensor(len(y), y[0].shape[0])).to(device)
+            s = torch.cat(s, out=torch.Tensor(len(s), s[0].shape[0])).to(device)
+            grms = calculate_grms(all_preds, y, s)
+        else:
+            grms = 0.0
 
     return np.mean(epoch_total_loss ), np.mean(epoch_loss_main), np.mean(epoch_acc_main), np.mean(epoch_loss_aux), np.mean(epoch_acc_aux), grms
 
@@ -1086,18 +1088,30 @@ def three_phase_training_loop(
         elif training_loop_type == 'three_phase_custom':
 
             print(f"in three phase custom: training loop type is {training_loop_type}")
-            train_loss_main, train_loss_aux, train_loss_total, train_acc_main, train_acc_aux = train_adv_three_phase_custom(model,
-                                                                                                   train_iterator,
-                                                                                                   optimizer, criterion,
-                                                                                                   device,
-                                                                                                   accuracy_calculation_function,
-                                                                                                   phase, other_params)
+            train_loss_main, train_loss_aux, train_loss_total, train_acc_main, train_acc_aux = train_adv_three_phase_custom(
+                model,
+                train_iterator,
+                optimizer, criterion,
+                device,
+                accuracy_calculation_function,
+                phase, other_params)
+
+            valid_total_loss, valid_loss_main, valid_acc_main, valid_loss_aux, valid_acc_aux, grms = evaluate_adv(model,
+                                                                                                                  dev_iterator,
+                                                                                                                  criterion,
+                                                                                                                  device,
+                                                                                                                  accuracy_calculation_function,
+                                                                                                                  other_params)
+            test_total_loss, test_loss_main, test_acc_main, test_loss_aux, test_acc_aux, grms = evaluate_adv(model,
+                                                                                                             test_iterator,
+                                                                                                             criterion,
+                                                                                                             device,
+                                                                                                             accuracy_calculation_function,
+                                                                                                             other_params)
+
+
         else:
             raise CustomError('The training loop type is incorrect.')
-        valid_total_loss, valid_loss_main, valid_acc_main, valid_loss_aux, valid_acc_aux, grms = evaluate_adv(model, dev_iterator, criterion, device, accuracy_calculation_function,
-                                             other_params)
-        test_total_loss, test_loss_main, test_acc_main, test_loss_aux, test_acc_aux, grms = evaluate_adv(model, test_iterator, criterion, device, accuracy_calculation_function,
-                                           other_params)
 
         train_total_loss = train_loss_total
 
