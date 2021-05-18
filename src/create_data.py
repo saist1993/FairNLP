@@ -197,7 +197,6 @@ class WikiSimpleClassification:
         return vocab, number_of_labels, train_iterator, dev_iterator, test_iterator
 
 
-
 class ValencePrediction(WikiSimpleClassification):
 
     def __init__(self, dataset_name:str,**params):
