@@ -700,13 +700,13 @@ def evaluate_adv(model, iterator, criterion, device, accuracy_calculation_functi
             epoch_acc_aux.append(acc_aux.item())
             epoch_total_loss.append(total_loss.item())
 
-        if not is_post_hoc:
-            all_preds = torch.cat(all_preds, out=torch.Tensor(len(all_preds), all_preds[0].shape[0])).to(device)
-            y = torch.cat(y, out=torch.Tensor(len(y), y[0].shape[0])).to(device)
-            s = torch.cat(s, out=torch.Tensor(len(s), s[0].shape[0])).to(device)
-            grms = calculate_grms(all_preds, y, s)
-        else:
-            grms = 0.0
+    if not is_post_hoc:
+        all_preds = torch.cat(all_preds, out=torch.Tensor(len(all_preds), all_preds[0].shape[0])).to(device)
+        y = torch.cat(y, out=torch.Tensor(len(y), y[0].shape[0])).to(device)
+        s = torch.cat(s, out=torch.Tensor(len(s), s[0].shape[0])).to(device)
+        grms = calculate_grms(all_preds, y, s)
+    else:
+        grms = 0.0
 
     return np.mean(epoch_total_loss ), np.mean(epoch_loss_main), np.mean(epoch_acc_main), np.mean(epoch_loss_aux), np.mean(epoch_acc_aux), grms
 
