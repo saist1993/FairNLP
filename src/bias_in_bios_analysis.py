@@ -41,7 +41,7 @@ def get_acc(sub_data:list):
 
 def calculate_rms(acc_data):
     acc = [(i[2]-i[3])**2 for i in acc_data]
-    return np.sqrt(np.sum(acc))
+    return np.sqrt(np.mean(acc))
 
 def return_larget_diff(acc_data):
     profession, diff = acc_data[0][0], abs(acc_data[0][1]-acc_data[0][2])
