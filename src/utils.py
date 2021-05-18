@@ -335,7 +335,7 @@ def calculate_grms(preds, y, s):
         for group in unique_groups:  # iterating over each group say: group=male for the firt iteration
             mask_pos = torch.logical_and(y == uc, s == group)  # find instances with y=doctor and s=male
             g_fairness_pos = torch.mean((preds[mask_pos] == uc).float())
-            group_fairness[uc][group] = g_fairness_pos
+            group_fairness[uc][group] = g_fairness_pos.item()
 
     scores = []
     for key,value in group_fairness.items():
@@ -343,4 +343,4 @@ def calculate_grms(preds, y, s):
         gender_1, gender_2 = temp[0], temp[1]
         scores.append((gender_1-gender_2)**2)
 
-    return torch.sqrt(torch.mean(scores)).items()
+    return np.sqrt(np.mean(scores))
