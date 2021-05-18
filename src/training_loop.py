@@ -3,8 +3,8 @@ import torch
 import numpy as np
 from tqdm.auto import tqdm
 from typing import List, Union
-from utils import equal_odds
 from models import initialize_parameters
+from utils import equal_odds, calculate_grms
 
 
 # custom imports
@@ -649,6 +649,8 @@ def evaluate_adv(model, iterator, criterion, device, accuracy_calculation_functi
     loss_aux_scale = other_params["loss_aux_scale"]
     is_regression = other_params['is_regression']
     is_post_hoc = other_params['is_post_hoc']
+    all_preds = []
+    y,s = [],[]
 
 
 
@@ -657,6 +659,8 @@ def evaluate_adv(model, iterator, criterion, device, accuracy_calculation_functi
             labels = labels.to(device)
             text = text.to(device)
             aux = aux.to(device)
+            y.append(labels)
+            s.append(aux)
 
             if is_post_hoc:
                 predictions = model(text, lengths)
@@ -683,10 +687,18 @@ def evaluate_adv(model, iterator, criterion, device, accuracy_calculation_functi
                 acc_aux = accuracy_calculation_function(aux_predictions, aux)
 
                 total_loss = loss_main + (loss_aux_scale * loss_aux)
+                all_preds.append(predictions.argmax(1))
 
             # loss = loss_main + (loss_aux_scale * loss_aux)
             # all_predictions.append(aux_predictions.squeeze(),labels, aux.squeeze(), )
             # acc = accuracy_calculation_function(predictions, labels)
+            if not is_post_hoc:
+                all_preds = torch.cat(all_preds, out=torch.Tensor(len(all_preds), all_preds[0].shape[0])).to(device)
+                y = torch.cat(y, out=torch.Tensor(len(y), y[0].shape[0])).to(device)
+                s = torch.cat(s, out=torch.Tensor(len(s), s[0].shape[0])).to(device)
+                grms = calculate_grms(all_preds, y, s)
+            else:
+                grms = 0.0
 
             epoch_loss_main.append(loss_main.item())
             epoch_acc_main.append(acc_main.item())
@@ -694,7 +706,7 @@ def evaluate_adv(model, iterator, criterion, device, accuracy_calculation_functi
             epoch_acc_aux.append(acc_aux.item())
             epoch_total_loss.append(total_loss.item())
 
-    return np.mean(epoch_total_loss ), np.mean(epoch_loss_main), np.mean(epoch_acc_main), np.mean(epoch_loss_aux), np.mean(epoch_acc_aux)
+    return np.mean(epoch_total_loss ), np.mean(epoch_loss_main), np.mean(epoch_acc_main), np.mean(epoch_loss_aux), np.mean(epoch_acc_aux), grms
 
 
 def generate_predictions(model, iterator, device):
@@ -801,9 +813,9 @@ def basic_training_loop(
             train_total_loss, train_loss_main, train_acc_main, train_loss_aux, train_acc_aux = train_adv(model, train_iterator, optimizer, criterion, device,
                                           accuracy_calculation_function, other_params)
 
-            valid_total_loss, valid_loss_main, valid_acc_main, valid_loss_aux, valid_acc_aux = evaluate_adv(model, dev_iterator, criterion, device, accuracy_calculation_function,
+            valid_total_loss, valid_loss_main, valid_acc_main, valid_loss_aux, valid_acc_aux, grms = evaluate_adv(model, dev_iterator, criterion, device, accuracy_calculation_function,
                                              other_params)
-            test_total_loss, test_loss_main, test_acc_main, test_loss_aux, test_acc_aux = evaluate_adv(model, test_iterator, criterion, device, accuracy_calculation_function,
+            test_total_loss, test_loss_main, test_acc_main, test_loss_aux, test_acc_aux, grms = evaluate_adv(model, test_iterator, criterion, device, accuracy_calculation_function,
                                            other_params)
 
             end_time = time.monotonic()
@@ -1082,9 +1094,9 @@ def three_phase_training_loop(
                                                                                                    phase, other_params)
         else:
             raise CustomError('The training loop type is incorrect.')
-        valid_total_loss, valid_loss_main, valid_acc_main, valid_loss_aux, valid_acc_aux = evaluate_adv(model, dev_iterator, criterion, device, accuracy_calculation_function,
+        valid_total_loss, valid_loss_main, valid_acc_main, valid_loss_aux, valid_acc_aux, grms = evaluate_adv(model, dev_iterator, criterion, device, accuracy_calculation_function,
                                              other_params)
-        test_total_loss, test_loss_main, test_acc_main, test_loss_aux, test_acc_aux = evaluate_adv(model, test_iterator, criterion, device, accuracy_calculation_function,
+        test_total_loss, test_loss_main, test_acc_main, test_loss_aux, test_acc_aux, grms = evaluate_adv(model, test_iterator, criterion, device, accuracy_calculation_function,
                                            other_params)
 
         train_total_loss = train_loss_total
@@ -1141,7 +1153,8 @@ def three_phase_training_loop(
                 'test_acc_main': test_acc_main,
                 'test_acc_aux': test_acc_aux,
                 'epoch': epoch,
-                'encoder_norm': enc_grad_norm
+                'encoder_norm': enc_grad_norm,
+                'grms':grms
             })
 
     if not only_perturbate:
