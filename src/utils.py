@@ -1,6 +1,7 @@
 """From mytorch utils"""
 
 import re
+import math
 import warnings
 import numpy as np
 from tqdm import tqdm
@@ -337,7 +338,10 @@ def calculate_grms(preds, y, s):
         for group in unique_groups:  # iterating over each group say: group=male for the firt iteration
             mask_pos = torch.logical_and(y == uc, s == group)  # find instances with y=doctor and s=male
             g_fairness_pos = torch.mean((preds[mask_pos] == uc).float())
-            group_fairness[uc][group] = g_fairness_pos.item()
+            temp = g_fairness_pos.item()
+            if math.isnan(temp):
+                temp = 0.0
+            group_fairness[uc][group] = temp
 
     scores = []
     for key,value in group_fairness.items():

@@ -473,8 +473,8 @@ class BiasinBiosSimpleAdv(WikiSimpleClassification):
 
         if self.trim_data:
             train = self.read_data("../data/bias_in_bios/train.pickle")[:15000]
-            dev = self.read_data("../data/bias_in_bios/dev.pickle")[:500]
-            test = self.read_data("../data/bias_in_bios/test.pickle")[:500]
+            dev = self.read_data("../data/bias_in_bios/dev.pickle")
+            test = self.read_data("../data/bias_in_bios/test.pickle")
         else:
             train = self.read_data("../data/bias_in_bios/train.pickle")
             dev = self.read_data("../data/bias_in_bios/dev.pickle")
