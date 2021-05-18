@@ -312,3 +312,35 @@ def equal_odds(preds, y, s, device, total_no_main_classes, total_no_aux_classes,
             fairness_lookup[int(uc.item()),int(group.item())] = g_fairness_pos
 
     return group_fairness, fairness_lookup
+
+def calculate_grms(preds, y, s):
+    unique_classes = torch.sort(torch.unique(y))[0]  # For example: [doctor, nurse, engineer]
+    unique_groups = torch.sort(torch.unique(s))[0]  # For example: [Male, Female]
+    group_fairness = {}  # a dict which keeps a track on how fairness is changing
+    '''
+    it will have a structure of 
+    {
+        'doctor': {
+            'm' : 0.5, 
+            'f' : 0.6
+            }, 
+        'model': {
+        'm': 0.5,
+        'f': 0.7,
+        }
+    '''
+    for uc in unique_classes:  # iterating over each class say: uc=doctor for the first iteration
+        group_fairness[uc] = {}
+        positive_rate = torch.mean((preds[y == uc] == uc).float())  # prob(pred=doctor/y=doctor)
+        for group in unique_groups:  # iterating over each group say: group=male for the firt iteration
+            mask_pos = torch.logical_and(y == uc, s == group)  # find instances with y=doctor and s=male
+            g_fairness_pos = torch.mean((preds[mask_pos] == uc).float())
+            group_fairness[uc][group] = g_fairness_pos
+
+    scores = []
+    for key,value in group_fairness.items():
+        temp = [value_1 for key_1, value_1 in value.items()]
+        gender_1, gender_2 = temp[0], temp[1]
+        scores.append((gender_1-gender_2)**2)
+
+    return np.sqrt(np.mean(scores))
