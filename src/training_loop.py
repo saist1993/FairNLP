@@ -710,6 +710,11 @@ def basic_training_loop(
     except:
         fair_grad = False
 
+    try:
+        reset_fairness = other_params['reset_fairness']
+    except:
+        reset_fairness = False
+
     print(f"is adv: {is_adv}")
 
     group_fairness, fairness_lookup = {}, torch.zeros([1,1])
@@ -845,6 +850,8 @@ def basic_training_loop(
                 train_loss, train_acc, group_fairness, fairness_lookup =\
                     train_fair_grad(model, train_iterator, optimizer, criterion, device, accuracy_calculation_function,
                                     group_fairness, fairness_lookup, other_params)
+                if reset_fairness:
+                    group_fairness, fairness_lookup = {}, torch.zeros([1, 1])
                 valid_loss, valid_acc = evaluate_fair_grad(model, dev_iterator, criterion, device, accuracy_calculation_function,
                                                  other_params)
                 test_loss, test_acc = evaluate_fair_grad(model, test_iterator, criterion, device, accuracy_calculation_function,

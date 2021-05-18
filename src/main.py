@@ -151,6 +151,7 @@ def get_pretrained_embedding(initial_embedding, pretrained_vectors, vocab, devic
 @click.option('-optimizer', '--optimizer', type=str, default="adam", help="only works when adv is True")
 @click.option('-lr', '--lr', type=float, default=0.01, help="main optimizer lr")
 @click.option('-fair_grad', '--fair_grad', type=bool, default=False, help="implements the fair sgd and training loop")
+@click.option('-reset_fairness', '--reset_fairness', type=bool, default=False, help="resets fairness every epoch. By default fairness is just added")
 
 
 def main(emb_dim:int,
@@ -196,7 +197,8 @@ def main(emb_dim:int,
          eps_scale:str,
          optimizer:str,
          lr:float,
-         fair_grad:bool
+         fair_grad:bool,
+         reset_fairness:bool
          ):
     if use_wandb:
         import wandb
@@ -408,7 +410,8 @@ def main(emb_dim:int,
             'classifier_learning_rate_second_phase': classifier_learning_rate_second_phase,
             'eps':eps,
             'eps_scale': eps_scale,
-            'fair_grad': fair_grad
+            'fair_grad': fair_grad,
+            'reset_fairness': reset_fairness
         }
 
 
