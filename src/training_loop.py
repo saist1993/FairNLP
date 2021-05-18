@@ -29,9 +29,16 @@ def train(model, iterator, optimizer, criterion, device, accuracy_calculation_fu
     if model.noise_layer:
         model.eps = other_params['eps']
 
-    for labels, text, lengths in tqdm(iterator):
-        labels = labels.to(device)
-        text = text.to(device)
+    for items in tqdm(iterator):
+        if len(items) == 4:
+            labels, text, lengths, aux = items
+            labels = labels.to(device)
+            text = text.to(device)
+            aux = aux.to(device)
+        else:
+            labels, text, lengths, aux = items
+            labels = labels.to(device)
+            text = text.to(device)
 
         optimizer.zero_grad()
 
@@ -106,13 +113,16 @@ def train_adv(model, iterator, optimizer, criterion, device, accuracy_calculatio
     is_regression = other_params['is_regression']
     is_post_hoc = other_params['is_post_hoc']
 
-
-    for labels, text, lengths, aux in tqdm(iterator):
-
-        labels = labels.to(device)
-        text = text.to(device)
-        aux = aux.to(device)
-        optimizer.zero_grad()
+    for items in tqdm(iterator):
+        if len(items) == 4:
+            labels, text, lengths, aux = items
+            labels = labels.to(device)
+            text = text.to(device)
+            aux = aux.to(device)
+        else:
+            labels, text, lengths, aux = items
+            labels = labels.to(device)
+            text = text.to(device)
 
         if is_post_hoc:
             predictions = model(text, lengths)
