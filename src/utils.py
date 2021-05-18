@@ -343,4 +343,6 @@ def calculate_grms(preds, y, s):
         gender_1, gender_2 = temp[0], temp[1]
         scores.append((gender_1-gender_2)**2)
 
+    print(group_fairness)
+    raise IOError
     return np.sqrt(np.mean(scores))
