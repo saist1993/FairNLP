@@ -272,6 +272,9 @@ def evaluate_fair_grad(model, iterator, criterion, device, accuracy_calculation_
     is_regression = other_params['is_regression']
     model.eval()
 
+    all_preds = []
+    y,s = [],[]
+
     with torch.no_grad():
         for iteration_number, items in tqdm(enumerate(iterator)):
             if len(items) == 4:
@@ -284,9 +287,8 @@ def evaluate_fair_grad(model, iterator, criterion, device, accuracy_calculation_
                 labels = labels.to(device)
                 text = text.to(device)
 
-
-            labels = labels.to(device)
-            text = text.to(device)
+            y.append(labels)
+            s.append(aux)
 
             predictions = model(text, lengths)
 
@@ -299,12 +301,17 @@ def evaluate_fair_grad(model, iterator, criterion, device, accuracy_calculation_
             loss = torch.mean(loss)
 
             acc = accuracy_calculation_function(predictions, labels)
+            all_preds.append(predictions.argmax(1))
 
 
             epoch_loss += loss.item()
             epoch_acc += acc
+        all_preds = torch.cat(all_preds, out=torch.Tensor(len(all_preds), all_preds[0].shape[0])).to(device)
+        y = torch.cat(y, out=torch.Tensor(len(y), y[0].shape[0])).to(device)
+        s = torch.cat(s, out=torch.Tensor(len(s), s[0].shape[0])).to(device)
+        grms = calculate_grms(all_preds, y, s)
 
-    return epoch_loss / len(iterator), epoch_acc / len(iterator)
+    return epoch_loss / len(iterator), epoch_acc / len(iterator), grms
 
 def train_adv_three_phase(model, iterator, optimizer, criterion, device, accuracy_calculation_function, phase, other_params):
     print("using a three phase training loop")
@@ -914,9 +921,9 @@ def basic_training_loop(
                                     group_fairness, fairness_lookup, other_params)
                 if reset_fairness:
                     group_fairness, fairness_lookup = {}, torch.zeros([1, 1])
-                valid_loss, valid_acc = evaluate_fair_grad(model, dev_iterator, criterion, device, accuracy_calculation_function,
+                valid_loss, valid_acc, grms = evaluate_fair_grad(model, dev_iterator, criterion, device, accuracy_calculation_function,
                                                  other_params)
-                test_loss, test_acc = evaluate_fair_grad(model, test_iterator, criterion, device, accuracy_calculation_function,
+                test_loss, test_acc, grms = evaluate_fair_grad(model, test_iterator, criterion, device, accuracy_calculation_function,
                                                other_params)
             else:
                 train_loss, train_acc = train(model, train_iterator, optimizer, criterion, device, accuracy_calculation_function, other_params)
@@ -926,6 +933,7 @@ def basic_training_loop(
                                                  other_params)
                 test_loss, test_acc = evaluate(model, test_iterator, criterion, device, accuracy_calculation_function,
                                                other_params)
+                grms = 0.0
 
 
 
@@ -959,7 +967,8 @@ def basic_training_loop(
                     'epoch': epoch,
                     'train_acc': train_acc,
                     'valid_acc': valid_acc,
-                    'test_acc': test_acc
+                    'test_acc': test_acc,
+                    'grms': grms
                 })
 
 
@@ -1095,7 +1104,7 @@ def three_phase_training_loop(
                                                                                                                   device,
                                                                                                                   accuracy_calculation_function,
                                                                                                                   other_params)
-
+            print(grms)
             train_loss_main, train_loss_aux, train_loss_total, train_acc_main, train_acc_aux = train_adv_three_phase_custom(
                 model,
                 train_iterator,
