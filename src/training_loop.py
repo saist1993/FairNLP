@@ -36,7 +36,7 @@ def train(model, iterator, optimizer, criterion, device, accuracy_calculation_fu
             text = text.to(device)
             aux = aux.to(device)
         else:
-            labels, text, lengths, aux = items
+            labels, text, lengths = items
             labels = labels.to(device)
             text = text.to(device)
 
@@ -75,9 +75,16 @@ def evaluate(model, iterator, criterion, device, accuracy_calculation_function, 
     model.eval()
 
     with torch.no_grad():
-        for labels, text, lengths in iterator:
-            labels = labels.to(device)
-            text = text.to(device)
+        for items in tqdm(iterator):
+            if len(items) == 4:
+                labels, text, lengths, aux = items
+                labels = labels.to(device)
+                text = text.to(device)
+                aux = aux.to(device)
+            else:
+                labels, text, lengths = items
+                labels = labels.to(device)
+                text = text.to(device)
 
             predictions = model(text, lengths)
 
