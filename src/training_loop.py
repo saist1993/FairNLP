@@ -74,6 +74,11 @@ def evaluate(model, iterator, criterion, device, accuracy_calculation_function, 
     is_regression = other_params['is_regression']
     model.eval()
 
+    all_preds = []
+    y,s = [],[]
+    is_grms = False
+    grms = 0.0
+
     with torch.no_grad():
         for items in tqdm(iterator):
             if len(items) == 4:
@@ -81,13 +86,20 @@ def evaluate(model, iterator, criterion, device, accuracy_calculation_function, 
                 labels = labels.to(device)
                 text = text.to(device)
                 aux = aux.to(device)
+                is_grms = True # grms can be calculated
             else:
                 labels, text, lengths = items
                 labels = labels.to(device)
                 text = text.to(device)
 
+
+
             predictions = model(text, lengths)
 
+            if len(items) == 4:
+                y.append(labels)
+                s.append(aux)
+                all_preds.append(predictions.argmax(1))
             # loss = criterion(predictions, labels)
             if is_regression:
                 loss = criterion(predictions.squeeze(), labels.squeeze())
@@ -100,7 +112,13 @@ def evaluate(model, iterator, criterion, device, accuracy_calculation_function, 
             epoch_loss += loss.item()
             epoch_acc += acc
 
-    return epoch_loss / len(iterator), epoch_acc / len(iterator)
+    if is_grms:
+        all_preds = torch.cat(all_preds, out=torch.Tensor(len(all_preds), all_preds[0].shape[0])).to(device)
+        y = torch.cat(y, out=torch.Tensor(len(y), y[0].shape[0])).to(device)
+        s = torch.cat(s, out=torch.Tensor(len(s), s[0].shape[0])).to(device)
+        grms = calculate_grms(all_preds, y, s)
+
+    return epoch_loss / len(iterator), epoch_acc / len(iterator), grms
 
 
 def train_adv(model, iterator, optimizer, criterion, device, accuracy_calculation_function, other_params):
@@ -936,11 +954,11 @@ def basic_training_loop(
                 train_loss, train_acc = train(model, train_iterator, optimizer, criterion, device, accuracy_calculation_function, other_params)
                 if model.noise_layer:
                     model.eps = original_eps
-                valid_loss, valid_acc = evaluate(model, dev_iterator, criterion, device, accuracy_calculation_function,
+                valid_loss, valid_acc, grms = evaluate(model, dev_iterator, criterion, device, accuracy_calculation_function,
                                                  other_params)
-                test_loss, test_acc = evaluate(model, test_iterator, criterion, device, accuracy_calculation_function,
+                test_loss, test_acc, grms = evaluate(model, test_iterator, criterion, device, accuracy_calculation_function,
                                                other_params)
-                grms = 0.0
+
 
 
 
