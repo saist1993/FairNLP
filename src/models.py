@@ -115,6 +115,12 @@ class BiLSTM(nn.Module):
         self.fc = nn.Linear(2 * hid_dim, output_dim)
         self.dropout = nn.Dropout(dropout)
 
+    @property
+    def layers(self):
+        return torch.nn.ModuleList(
+            [self.embedding, self.lstm, self.dropout,
+             self.fc])
+
     def forward(self, text, lengths, return_hidden=False):
         # text = [seq len, batch size]
         # lengths = [batch size]
