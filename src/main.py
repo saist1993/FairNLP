@@ -372,8 +372,16 @@ def main(emb_dim:int,
             raise CustomError("no optimizer selected")
         optimizer = make_opt(model, opt_fn, lr=lr)
     else:
-        optimizer = optim.Adam(model.parameters([param for param in model.parameters() if param.requires_grad == True]),
-                               lr=0.01)
+        if optimizer.lower() == 'adagrad':
+            opt_fn = partial(torch.optim.Adagrad)
+        elif optimizer.lower() == 'adam':
+            opt_fn = partial(torch.optim.Adam)
+        elif optimizer.lower() == 'sgd':
+            opt_fn = partial(torch.optim.SGD)
+        else:
+            raise CustomError("no optimizer selected")
+        optimizer = make_opt(model, opt_fn, lr=lr)
+
     # setting up loss function
     if number_of_labels == 1:
         criterion = nn.MSELoss()
