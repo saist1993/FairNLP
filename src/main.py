@@ -153,6 +153,7 @@ def get_pretrained_embedding(initial_embedding, pretrained_vectors, vocab, devic
 @click.option('-fair_grad', '--fair_grad', type=bool, default=False, help="implements the fair sgd and training loop")
 @click.option('-reset_fairness', '--reset_fairness', type=bool, default=False, help="resets fairness every epoch. By default fairness is just added")
 @click.option('-use_adv_dataset', '--use_adv_dataset', type=bool, default=True, help="if True: output includes aux")
+@click.option('-use_lr_schedule', '--use_lr_schedule', type=bool, default=True, help="if True: lr schedule is implemented. Note that this is only for simple trainign loop and not for three phase ones.")
 
 
 def main(emb_dim:int,
@@ -200,7 +201,8 @@ def main(emb_dim:int,
          lr:float,
          fair_grad:bool,
          reset_fairness:bool,
-         use_adv_dataset:bool
+         use_adv_dataset:bool,
+         use_lr_schedule:bool
          ):
 
     if is_adv:
@@ -382,6 +384,17 @@ def main(emb_dim:int,
             raise CustomError("no optimizer selected")
         optimizer = make_opt(model, opt_fn, lr=lr)
 
+    if use_lr_schedule:
+        lr_scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
+                optimizer=optimizer,
+                mode='min',
+                patience=3,
+                factor=0.1,
+                verbose=True
+            )
+    else:
+        lr_scheduler = None
+
     # setting up loss function
     if number_of_labels == 1:
         criterion = nn.MSELoss()
@@ -421,7 +434,9 @@ def main(emb_dim:int,
             'eps':eps,
             'eps_scale': eps_scale,
             'fair_grad': fair_grad,
-            'reset_fairness': reset_fairness
+            'reset_fairness': reset_fairness,
+            'use_lr_sschedule': use_lr_schedule,
+            'lr_scheduler': lr_scheduler
         }
 
 
