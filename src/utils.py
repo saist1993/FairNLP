@@ -392,3 +392,6 @@ def custom_equal_odds(preds, y, s, device, total_no_main_classes, total_no_aux_c
 
 
     return group_fairness, fairness_lookup
+
+
+

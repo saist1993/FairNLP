@@ -26,6 +26,8 @@ def train(model, iterator, optimizer, criterion, device, accuracy_calculation_fu
     return_hidden = other_params['return_hidden']
     hidden_l1_scale = other_params['hidden_l1_scale']
     hidden_l2_scale = other_params['hidden_l2_scale']
+
+
     if model.noise_layer:
         model.eps = other_params['eps']
 
@@ -789,6 +791,9 @@ def basic_training_loop(
     save_model = other_params['save_model']
     original_eps = other_params['eps']
     eps_scale = other_params['eps_scale']
+    use_lr_schedule = other_params['use_lr_schedule']
+    lr_scheduler = other_params['lr_scheduler']
+
     try:
         is_post_hoc = other_params['is_post_hoc']
     except KeyError:
@@ -808,6 +813,7 @@ def basic_training_loop(
         reset_fairness = other_params['reset_fairness']
     except:
         reset_fairness = False
+
 
     print(f"is adv: {is_adv}")
 
@@ -958,6 +964,10 @@ def basic_training_loop(
                                                  other_params)
                 test_loss, test_acc, grms = evaluate(model, test_iterator, criterion, device, accuracy_calculation_function,
                                                other_params)
+
+
+            if use_lr_schedule:
+                lr_scheduler.step(valid_loss)
 
 
 
