@@ -435,7 +435,7 @@ def main(emb_dim:int,
             'eps_scale': eps_scale,
             'fair_grad': fair_grad,
             'reset_fairness': reset_fairness,
-            'use_lr_sschedule': use_lr_schedule,
+            'use_lr_schedule': use_lr_schedule,
             'lr_scheduler': lr_scheduler
         }
 
