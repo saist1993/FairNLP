@@ -1,5 +1,7 @@
 import time
+import math
 import torch
+import string
 import numpy as np
 from tqdm.auto import tqdm
 from typing import List, Union
@@ -118,7 +120,7 @@ def evaluate(model, iterator, criterion, device, accuracy_calculation_function, 
         all_preds = torch.cat(all_preds, out=torch.Tensor(len(all_preds), all_preds[0].shape[0])).to(device)
         y = torch.cat(y, out=torch.Tensor(len(y), y[0].shape[0])).to(device)
         s = torch.cat(s, out=torch.Tensor(len(s), s[0].shape[0])).to(device)
-        grms = calculate_grms(all_preds, y, s)
+        grms, group_fairness = calculate_grms(all_preds, y, s)
 
     return epoch_loss / len(iterator), epoch_acc / len(iterator), grms
 
@@ -209,6 +211,11 @@ def train_fair_grad(model, iterator, optimizer, criterion, device, accuracy_calc
     model.train()
     is_regression = other_params['is_regression']
 
+    try:
+        wandb = other_params['wandb']
+    except KeyError:
+        wandb = None
+
 
     # get all_aux, all_labels -> they represent aux over the whole data, and labels over the whole data
     all_aux, all_labels = [], []
@@ -284,6 +291,12 @@ def train_fair_grad(model, iterator, optimizer, criterion, device, accuracy_calc
                                                                                    epsilon=0.0)
         fairness_lookup = fairness_lookup + interm_fairness_lookup
 
+        if wandb:
+            fairness_wandb = [0 if math.isnan(i) else i  for i in interm_fairness_lookup.view(-1).detach().cpu().numpy()]
+            keys = [char for char in string.ascii_lowercase[:len(fairness_wandb)]]
+
+            wandb.log({k:v for k,v in zip(keys, fairness_wandb)})
+
 
         epoch_loss += loss.item()
         epoch_acc += acc.item()
@@ -336,7 +349,7 @@ def evaluate_fair_grad(model, iterator, criterion, device, accuracy_calculation_
         all_preds = torch.cat(all_preds, out=torch.Tensor(len(all_preds), all_preds[0].shape[0])).to(device)
         y = torch.cat(y, out=torch.Tensor(len(y), y[0].shape[0])).to(device)
         s = torch.cat(s, out=torch.Tensor(len(s), s[0].shape[0])).to(device)
-        grms = calculate_grms(all_preds, y, s)
+        grms, group_fairness = calculate_grms(all_preds, y, s)
 
     return epoch_loss / len(iterator), epoch_acc / len(iterator), grms
 
@@ -738,7 +751,7 @@ def evaluate_adv(model, iterator, criterion, device, accuracy_calculation_functi
             all_preds = torch.cat(all_preds, out=torch.Tensor(len(all_preds), all_preds[0].shape[0])).to(device)
             y = torch.cat(y, out=torch.Tensor(len(y), y[0].shape[0])).to(device)
             s = torch.cat(s, out=torch.Tensor(len(s), s[0].shape[0])).to(device)
-            grms = calculate_grms(all_preds, y, s)
+            grms, group_fairness = calculate_grms(all_preds, y, s)
         else:
             grms = 0.0
 
@@ -947,6 +960,7 @@ def basic_training_loop(
                                               last_scale=current_scale)
             other_params['eps'] = current_scale
             if fair_grad:
+                other_params['wandb'] = wandb
                 train_loss, train_acc, group_fairness, fairness_lookup =\
                     train_fair_grad(model, train_iterator, optimizer, criterion, device, accuracy_calculation_function,
                                     group_fairness, fairness_lookup, other_params)
