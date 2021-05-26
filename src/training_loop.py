@@ -195,6 +195,16 @@ def train_adv(model, iterator, optimizer, criterion, device, accuracy_calculatio
     return np.mean(epoch_total_loss), np.mean(epoch_loss_main), np.mean(epoch_acc_main), np.mean(epoch_loss_aux), np.mean(epoch_acc_aux)
 
 
+from string import ascii_lowercase
+import itertools
+
+def iter_all_strings():
+    for size in itertools.count(1):
+        for s in itertools.product(ascii_lowercase, repeat=size):
+            yield "".join(s)
+
+
+
 def train_fair_grad(model, iterator, optimizer, criterion, device, accuracy_calculation_function,
                     group_fairness,fairness_lookup, other_params):
     """
@@ -293,7 +303,15 @@ def train_fair_grad(model, iterator, optimizer, criterion, device, accuracy_calc
 
         if wandb:
             fairness_wandb = [0 if math.isnan(i) else i  for i in interm_fairness_lookup.view(-1).detach().cpu().numpy()]
-            keys = [char for char in string.ascii_lowercase[:len(fairness_wandb)]]
+            # keys = [char for char in string.ascii_lowercase[:len(fairness_wandb)]]
+
+            keys = []
+            for count, s in enumerate(iter_all_strings()):
+                if count < len(fairness_wandb)/2:
+                    keys.append(s+'1')
+                    keys.append(s+'2')
+                else:
+                    break
 
             wandb.log({k:v for k,v in zip(keys, fairness_wandb)})
 
