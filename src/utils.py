@@ -342,6 +342,7 @@ def calculate_grms(preds, y, s):
             if math.isnan(temp):
                 temp = 0.0
             group_fairness[uc][group] = temp
+        group_fairness[uc]['total_acc'] = positive_rate
 
     scores = []
     for key,value in group_fairness.items():
@@ -349,7 +350,7 @@ def calculate_grms(preds, y, s):
         gender_1, gender_2 = temp[0], temp[1]
         scores.append((gender_1-gender_2)**2)
 
-    return np.sqrt(np.mean(scores))
+    return np.sqrt(np.mean(scores)), group_fairness
 
 
 def custom_equal_odds(preds, y, s, device, total_no_main_classes, total_no_aux_classes, epsilon=0.0):
