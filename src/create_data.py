@@ -530,13 +530,13 @@ class BiasinBiosSimpleAdv(WikiSimpleClassification):
                                                      )
 
         dev_iterator = torch.utils.data.DataLoader(dev_data,
-                                                   self.batch_size,
+                                                   512,
                                                    shuffle=False,
                                                    collate_fn=self.collate
                                                    )
 
         test_iterator = torch.utils.data.DataLoader(test_data,
-                                                    self.batch_size,
+                                                    512,
                                                     shuffle=False,
                                                     collate_fn=self.collate
                                                     )

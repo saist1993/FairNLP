@@ -822,8 +822,14 @@ def basic_training_loop(
     save_model = other_params['save_model']
     original_eps = other_params['eps']
     eps_scale = other_params['eps_scale']
-    use_lr_schedule = other_params['use_lr_schedule']
-    lr_scheduler = other_params['lr_scheduler']
+    try:
+        use_lr_schedule = other_params['use_lr_schedule']
+    except KeyError:
+        use_lr_schedule = False
+    try:
+        lr_scheduler = other_params['lr_scheduler']
+    except KeyError:
+        lr_scheduler = None
 
     try:
         is_post_hoc = other_params['is_post_hoc']
@@ -937,11 +943,13 @@ def basic_training_loop(
                     if valid_loss < best_valid_loss:
                         print(f"model saved as: {model_save_name}")
                         best_valid_loss = valid_loss
-                        torch.save(model.state_dict(), model_save_name)
+
 
                 if valid_acc > best_valid_acc:
                     best_valid_acc = valid_acc
                     test_acc_at_best_valid_acc = test_acc
+                    if save_model:
+                        torch.save(model.state_dict(), model_save_name)
 
                 if test_acc > best_test_acc:
                     best_test_acc = test_acc
@@ -1012,11 +1020,13 @@ def basic_training_loop(
                 if valid_loss < best_valid_loss:
                     print(f"model saved as: {model_save_name}")
                     best_valid_loss = valid_loss
-                    torch.save(model.state_dict(), model_save_name)
+
 
             if valid_acc > best_valid_acc:
                 best_valid_acc = valid_acc
                 test_acc_at_best_valid_acc = test_acc
+                if save_model:
+                    torch.save(model.state_dict(), model_save_name)
 
             if test_acc > best_test_acc:
                 best_test_acc = test_acc
@@ -1209,11 +1219,13 @@ def three_phase_training_loop(
             if valid_loss < best_valid_loss:
                 print(f"model saved as: {model_save_name}")
                 best_valid_loss = valid_loss
-                torch.save(model.state_dict(), model_save_name)
+
 
         if valid_acc > best_valid_acc:
             best_valid_acc = valid_acc
             test_acc_at_best_valid_acc = test_acc
+            if save_model:
+                torch.save(model.state_dict(), model_save_name)
 
         if test_acc > best_test_acc:
             best_test_acc = test_acc
