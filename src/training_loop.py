@@ -1176,7 +1176,7 @@ def three_phase_training_loop(
             print(f"in three phase custom: training loop type is {training_loop_type}")
 
 
-
+    
             train_loss_main, train_loss_aux, train_loss_total, train_acc_main, train_acc_aux = train_adv_three_phase_custom(
                 model,
                 train_iterator,
