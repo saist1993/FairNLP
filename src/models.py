@@ -157,8 +157,10 @@ class BiLSTM(nn.Module):
             # max_hidden = torch.max(hidden, 1, keepdims=True)[0]
             # min_hidden = torch.min(hidden, 1, keepdims=True)[0]
             # hidden = (hidden - min_hidden)/ (max_hidden - min_hidden)
-            if torch.norm(original_hidden, keepdim=True)> 1:
-                hidden = original_hidden / torch.norm(original_hidden, keepdim=True)
+            # if torch.norm(original_hidden, keepdim=True)> 1:
+            #     hidden = original_hidden / torch.norm(original_hidden, keepdim=True)
+
+            hidden = original_hidden / torch.norm(original_hidden, keepdim=True, dim=1)
             hidden = hidden + m.sample(hidden.shape).squeeze().to(self.device)
         else:
             hidden = original_hidden
