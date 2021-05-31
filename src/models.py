@@ -329,11 +329,11 @@ class Attacker(nn.Module):
         self.adv = DomainAdv(number_of_layers=adv_number_of_layers, input_dim= 2*hid_dim,
                              hidden_dim=hid_dim, output_dim=2, dropout=adv_dropout)
     def forward(self, text, lengths):
-        output = self.original_model(text, lengths, return_hidden=True)
-        if len(output) == 3:
-            _,_,hidden = output
+        _output = self.original_model(text, lengths, return_hidden=True)
+        if len(_output) == 3:
+            _,_,hidden = _output
         else:
-            _, _, _,hidden = output
+            _, _, _,hidden = _output
         output = self.adv(hidden)
         return output
 
