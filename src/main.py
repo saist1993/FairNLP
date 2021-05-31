@@ -488,9 +488,7 @@ def main(emb_dim:int,
         # the post_hoc classifier will be trained.
         # assert is_adv == True
 
-        if not is_adv:
-            is_adv = True
-            adv_loss_scale = 0.0
+
 
         # model_params['return_hidden'] = True
 
@@ -509,11 +507,17 @@ def main(emb_dim:int,
         optimizer = optim.Adam(post_hoc.parameters([param for param in post_hoc.parameters() if param.requires_grad == True]),
                                lr=0.01)
 
+        # if not is_adv:
+        #     is_adv = True
+        #     adv_loss_scale = 0.0
+        if not is_adv:
+            adv_loss_scale = 0.0
+
 
         # step 4 -> train like a normal human
 
         other_params = {
-            'is_adv': is_adv,
+            'is_adv': True,
             'loss_aux_scale': adv_loss_scale,
             'is_regression': regression,
             'is_post_hoc': True, # here the post-hoc has to be false
