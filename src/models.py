@@ -465,6 +465,7 @@ class BiLSTMAdvWithFreeze(nn.Module):
             adv_output = self.adv(original_hidden)
 
 
+
         if self.noise_layer:
             m = torch.distributions.laplace.Laplace(torch.tensor([0.0]), torch.tensor([laplace(self.eps, 2)]))
             # max_hidden = torch.max(hidden, 1, keepdims=True)[0]
