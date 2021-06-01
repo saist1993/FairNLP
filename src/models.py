@@ -458,11 +458,11 @@ class BiLSTMAdvWithFreeze(nn.Module):
 
         original_hidden = self.embedder(text, lengths)
 
-
-        if gradient_reversal:
-            adv_output = self.adv(GradReverse.apply(original_hidden))
-        else:
-            adv_output = self.adv(original_hidden)
+        #
+        # if gradient_reversal:
+        #     adv_output = self.adv(GradReverse.apply(original_hidden))
+        # else:
+        #     adv_output = self.adv(original_hidden)
 
 
 
@@ -480,10 +480,10 @@ class BiLSTMAdvWithFreeze(nn.Module):
         # hidden = hidden/torch.norm(hidden, keepdim=True)
 
         prediction = self.classifier(hidden)
-        # if gradient_reversal:
-        #     adv_output = self.adv(GradReverse.apply(hidden))
-        # else:
-        #     adv_output = self.adv(hidden)
+        if gradient_reversal:
+            adv_output = self.adv(GradReverse.apply(hidden))
+        else:
+            adv_output = self.adv(hidden)
 
         if return_hidden:
             return prediction, adv_output, original_hidden, hidden
