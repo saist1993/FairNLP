@@ -197,6 +197,48 @@ class DomainAdv(nn.Module):
                 x = layer(x)
         return x
 
+    @property
+    def layers(self):
+        return torch.nn.ModuleList(
+            [self.fc_layers])
+
+
+class LinearLayers(nn.Module):
+
+    def __init__(self, model_params):
+        super().__init__()
+        number_of_layers, input_dim, hidden_dim, output_dim, dropout = \
+            model_params['number_of_layers'], model_params['input_dim'],\
+            model_params['hidden_dim'], model_params['output_dim'], model_params['dropout']
+
+        self.fc_layers = []
+        self.dropout = nn.Dropout(dropout)
+        for i in range(number_of_layers):
+            if i != number_of_layers - 1 and i != 0:
+                self.fc_layers.append((nn.Linear(hidden_dim, hidden_dim)))
+            elif i == 0:
+                self.fc_layers.append(nn.Linear(input_dim, hidden_dim))
+            else:
+                self.fc_layers.append(nn.Linear(hidden_dim, output_dim)) # @TODO: see if there is a need for a softmax via sigmoid or something
+
+        self.fc_layers = torch.nn.ModuleList(self.fc_layers)
+
+        self.noise_layer = False
+
+    def forward(self, x, length):
+        length = None # it is a dummy input only meant for legacy
+        for index, layer in enumerate(self.fc_layers):
+            if len(self.fc_layers)-1 != index:
+                # x = func.relu(self.dropout(layer(x)))
+                x = func.relu(layer(x))
+            else:
+                x = layer(x)
+        return x
+
+    @property
+    def layers(self):
+        return torch.nn.ModuleList(
+            [self.fc_layers])
 
 
 class BiLSTMAdv(nn.Module):

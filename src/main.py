@@ -11,6 +11,7 @@ import torch.optim as optim
 
 import click
 import scipy
+import copy
 import random
 import gensim
 import pickle
@@ -30,7 +31,7 @@ from utils import resolve_device, CustomError
 from training_loop import basic_training_loop, three_phase_training_loop
 from utils import clean_text as clean_text_function
 from utils import clean_text_tweet as clean_text_function_tweet
-from models import BiLSTM, initialize_parameters, BiLSTMAdv, BOWClassifier, Attacker, CNN, BiLSTMAdvWithFreeze
+from models import BiLSTM, initialize_parameters, BiLSTMAdv, BOWClassifier, Attacker, CNN, BiLSTMAdvWithFreeze, LinearLayers
 
 import bias_in_bios_analysis
 
@@ -79,6 +80,10 @@ def generate_data_iterator(dataset_name:str, **kwargs):
             dataset_creator = create_data.BiasinBiosSimple(dataset_name=dataset_name, **kwargs)
             vocab, number_of_labels, train_iterator, dev_iterator, test_iterator = dataset_creator.run()
             return vocab, number_of_labels, train_iterator, dev_iterator, test_iterator
+    elif dataset_name.lower() in "_".join(['celeb', 'crime', 'dutch', 'compas', 'german', 'adult', 'gaussian','adult', 'multigroups']):
+        dataset_creator = create_data.SimpleAdvDatasetReader(dataset_name=dataset_name, **kwargs)
+        vocab, number_of_labels, train_iterator, dev_iterator, test_iterator = dataset_creator.run()
+        return vocab, number_of_labels, train_iterator, dev_iterator, test_iterator
     else:
         raise CustomError("No such dataset")
 
@@ -260,6 +265,8 @@ def main(emb_dim:int,
     vocab, number_of_labels, train_iterator, dev_iterator, test_iterator = \
         generate_data_iterator(dataset_name=dataset_name, **iterator_params)
 
+
+
     print(f"number of labels: {number_of_labels}")
     # need to pickle vocab. Same name as model save name but with additional "_vocab.pkl"
     pickle.dump(vocab, open(model_save_name + '_vocab.pkl', 'wb'))
@@ -274,11 +281,18 @@ def main(emb_dim:int,
         emb_dim = default_emb_dim
 
     output_dim = number_of_labels
-    input_dim = len(vocab)
+    if len(vocab) > 10: # it is text and not just feature vector
+        input_dim = len(vocab)
+    else:
+        for items in train_iterator:
+            item = items
+            break
+        input_dim = item[1].shape[1]
     if fair_grad:
         hidden_loss=False
         is_adv=False
 
+    model_name = copy.copy(model)
     if model == 'bilstm':
         model_params = {
             'input_dim': input_dim,
@@ -330,33 +344,45 @@ def main(emb_dim:int,
             'pad_idx': vocab[pad_token]
         }
         model = CNN(model_params)
+    elif model == 'linear':
+        model_params = {
+            'input_dim': input_dim,
+            'output_dim': output_dim,
+            'number_of_layers':2,
+            'dropout':BILSTM_PARAMS['dropout'],
+            'hidden_dim':BILSTM_PARAMS['hidden_dim']
+        }
+
+        # number_of_layers, input_dim, hidden_dim, output_dim, dropout = model_params['number_of_layers'], model_params['input_dim'], model_params['hidden_dim'], model_params['output_dim'], model_params['dropout']
+        model = LinearLayers(model_params)
     else:
         raise CustomError("No such model found")
 
 
 
-    if use_pretrained_emb:
-        print("updating embeddings")
-        try:
-            initial_embedding = model.embedding
-        except:
-            initial_embedding = model.embedder.embedding
+    if model_name not in ['linear']:
+        if use_pretrained_emb:
+            print("updating embeddings")
+            try:
+                initial_embedding = model.embedding
+            except:
+                initial_embedding = model.embedder.embedding
 
-        pretrained_embedding, unk_tokens = get_pretrained_embedding(initial_embedding=initial_embedding,
-                                                                    pretrained_vectors=pretrained_embedding,
-                                                                    vocab=vocab,
-                                                                    device=device)
+            pretrained_embedding, unk_tokens = get_pretrained_embedding(initial_embedding=initial_embedding,
+                                                                        pretrained_vectors=pretrained_embedding,
+                                                                        vocab=vocab,
+                                                                        device=device)
 
-        try:
-            model.embedding.weight.data.copy_(pretrained_embedding)
-        except:
-            model.embedder.embedding.weight.data.copy_(pretrained_embedding)
+            try:
+                model.embedding.weight.data.copy_(pretrained_embedding)
+            except:
+                model.embedder.embedding.weight.data.copy_(pretrained_embedding)
 
-    if not learnable_embeddings:
-        try:
-            model.embedding.weight.requires_grad = False
-        except:
-            model.embedder.embedding.weight.requires_grad = False
+        if not learnable_embeddings:
+            try:
+                model.embedding.weight.requires_grad = False
+            except:
+                model.embedder.embedding.weight.requires_grad = False
 
     print("model initialized")
     model = model.to(device)
