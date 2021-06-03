@@ -30,8 +30,11 @@ def train(model, iterator, optimizer, criterion, device, accuracy_calculation_fu
     hidden_l2_scale = other_params['hidden_l2_scale']
 
 
-    if model.noise_layer:
-        model.eps = other_params['eps']
+    try:
+        if model.noise_layer:
+            model.eps = other_params['eps']
+    except:
+        pass
 
     for items in tqdm(iterator):
         if len(items) == 4:
@@ -237,7 +240,7 @@ def train_fair_grad(model, iterator, optimizer, criterion, device, accuracy_calc
             text = text.to(device)
             aux = aux.to(device)
         else:
-            labels, text, lengths, aux = items
+            labels, text, lengths = items
             labels = labels.to(device)
             text = text.to(device)
 
@@ -266,7 +269,7 @@ def train_fair_grad(model, iterator, optimizer, criterion, device, accuracy_calc
             text = text.to(device)
             aux = aux.to(device)
         else:
-            labels, text, lengths, aux = items
+            labels, text, lengths = items
             labels = labels.to(device)
             text = text.to(device)
 
@@ -1035,6 +1038,7 @@ def basic_training_loop(
             print(f'\tTrain Loss: {train_loss:.3f} | Train Acc: {train_acc}%')
             print(f'\t Val. Loss: {valid_loss:.3f} |  Val. Acc: {valid_acc}%')
             print(f'\t Test Loss: {test_loss:.3f} |  Val. Acc: {test_acc}%')
+            print(f'\t grms: {grms:.3f}')
 
             if wandb:
                 wandb.log({
