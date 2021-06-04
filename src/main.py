@@ -28,10 +28,12 @@ import config
 import create_data
 import tokenizer_wrapper
 from utils import resolve_device, CustomError
-from training_loop import basic_training_loop, three_phase_training_loop
 from utils import clean_text as clean_text_function
 from utils import clean_text_tweet as clean_text_function_tweet
-from models import BiLSTM, initialize_parameters, BiLSTMAdv, BOWClassifier, Attacker, CNN, BiLSTMAdvWithFreeze, LinearLayers
+from utils import equal_odds, demographic_parity, equal_opportunity
+from training_loop import basic_training_loop, three_phase_training_loop
+from utils import calculate_grms, calculate_demographic_parity, calculate_equal_opportunity, calculate_equal_odds
+from models import BiLSTM, initialize_parameters, BiLSTMAdv, BOWClassifier, Attacker, CNN, BiLSTMAdvWithFreeze, LinearLayers, LinearAdv
 
 import bias_in_bios_analysis
 
@@ -63,29 +65,31 @@ def generate_data_iterator(dataset_name:str, **kwargs):
 
     if dataset_name[:4].lower() == 'wiki':
         dataset_creator = create_data.WikiSimpleClassification(dataset_name=dataset_name,**kwargs)
-        vocab, number_of_labels, train_iterator, dev_iterator, test_iterator = dataset_creator.run()
-        return vocab, number_of_labels, train_iterator, dev_iterator, test_iterator
+        vocab, number_of_labels, train_iterator, dev_iterator, test_iterator, number_of_aux_labels = dataset_creator.run()
+        # return vocab, number_of_labels, train_iterator, dev_iterator, test_iterator
 
     elif dataset_name.lower() == 'valence':
         dataset_creator = create_data.ValencePrediction(dataset_name=dataset_name,**kwargs)
-        vocab, number_of_labels, train_iterator, dev_iterator, test_iterator = dataset_creator.run()
-        return vocab, number_of_labels, train_iterator, dev_iterator, test_iterator
+        vocab, number_of_labels, train_iterator, dev_iterator, test_iterator, number_of_aux_labels = dataset_creator.run()
+        # return vocab, number_of_labels, train_iterator, dev_iterator, test_iterator
 
     elif dataset_name.lower() == 'bias_in_bios':
         if kwargs['use_adv_dataset']:
             dataset_creator = create_data.BiasinBiosSimpleAdv(dataset_name=dataset_name, **kwargs)
-            vocab, number_of_labels, train_iterator, dev_iterator, test_iterator = dataset_creator.run()
-            return vocab, number_of_labels, train_iterator, dev_iterator, test_iterator
+            vocab, number_of_labels, train_iterator, dev_iterator, test_iterator, number_of_aux_labels = dataset_creator.run()
+            # return vocab, number_of_labels, train_iterator, dev_iterator, test_iterator
         else:
             dataset_creator = create_data.BiasinBiosSimple(dataset_name=dataset_name, **kwargs)
-            vocab, number_of_labels, train_iterator, dev_iterator, test_iterator = dataset_creator.run()
-            return vocab, number_of_labels, train_iterator, dev_iterator, test_iterator
+            vocab, number_of_labels, train_iterator, dev_iterator, test_iterator, number_of_aux_labels = dataset_creator.run()
+            # return vocab, number_of_labels, train_iterator, dev_iterator, test_iterator
     elif dataset_name.lower() in "_".join(['celeb', 'crime', 'dutch', 'compas', 'german', 'adult', 'gaussian','adult', 'multigroups']):
         dataset_creator = create_data.SimpleAdvDatasetReader(dataset_name=dataset_name, **kwargs)
-        vocab, number_of_labels, train_iterator, dev_iterator, test_iterator = dataset_creator.run()
-        return vocab, number_of_labels, train_iterator, dev_iterator, test_iterator
+        vocab, number_of_labels, train_iterator, dev_iterator, test_iterator, number_of_aux_labels = dataset_creator.run()
+
     else:
         raise CustomError("No such dataset")
+
+    return vocab, number_of_labels, train_iterator, dev_iterator, test_iterator, number_of_aux_labels
 
 def get_pretrained_embedding(initial_embedding, pretrained_vectors, vocab, device):
     pretrained_embedding = torch.FloatTensor(initial_embedding.weight.clone()).cpu().detach().numpy()
@@ -159,6 +163,8 @@ def get_pretrained_embedding(initial_embedding, pretrained_vectors, vocab, devic
 @click.option('-reset_fairness', '--reset_fairness', type=bool, default=False, help="resets fairness every epoch. By default fairness is just added")
 @click.option('-use_adv_dataset', '--use_adv_dataset', type=bool, default=True, help="if True: output includes aux")
 @click.option('-use_lr_schedule', '--use_lr_schedule', type=bool, default=True, help="if True: lr schedule is implemented. Note that this is only for simple trainign loop and not for three phase ones.")
+@click.option('-fairness_function', '--fairness_function', type=str, default='equal_odds', help="the fairness measure to implement while employing fairgrad.")
+@click.option('-fairness_score_function', '--fairness_score_function', type=str, default='grms', help="The fairness score function.")
 
 
 def main(emb_dim:int,
@@ -207,7 +213,9 @@ def main(emb_dim:int,
          fair_grad:bool,
          reset_fairness:bool,
          use_adv_dataset:bool,
-         use_lr_schedule:bool
+         use_lr_schedule:bool,
+         fairness_function:str,
+         fairness_score_function:str
          ):
 
     if is_adv:
@@ -262,7 +270,7 @@ def main(emb_dim:int,
         'use_adv_dataset': use_adv_dataset,
         'trim_data': trim_data
     }
-    vocab, number_of_labels, train_iterator, dev_iterator, test_iterator = \
+    vocab, number_of_labels, train_iterator, dev_iterator, test_iterator, number_of_aux_labels = \
         generate_data_iterator(dataset_name=dataset_name, **iterator_params)
 
 
@@ -288,6 +296,7 @@ def main(emb_dim:int,
             item = items
             break
         input_dim = item[1].shape[1]
+
     if fair_grad:
         hidden_loss=False
         is_adv=False
@@ -355,12 +364,27 @@ def main(emb_dim:int,
 
         # number_of_layers, input_dim, hidden_dim, output_dim, dropout = model_params['number_of_layers'], model_params['input_dim'], model_params['hidden_dim'], model_params['output_dim'], model_params['dropout']
         model = LinearLayers(model_params)
+    elif model == 'linear_adv':
+        model_params = {
+            'input_dim': input_dim,
+            'output_dim': output_dim,
+            'number_of_layers': 2,
+            'dropout': BILSTM_PARAMS['dropout'],
+            'hidden_dim': BILSTM_PARAMS['hidden_dim'],
+            'adv_number_of_layers': BILSTM_PARAMS['adv_number_of_layers'],
+            'adv_dropout': BILSTM_PARAMS['adv_dropout'],
+            'device': device,
+            'noise_layer': noise_layer,
+            'eps': eps,
+            'number_of_aux_labels': number_of_aux_labels
+        }
+        model = LinearAdv(model_params)
     else:
         raise CustomError("No such model found")
 
 
 
-    if model_name not in ['linear']:
+    if model_name.lower() not in ['linear', 'linear_adv']:
         if use_pretrained_emb:
             print("updating embeddings")
             try:
@@ -436,6 +460,30 @@ def main(emb_dim:int,
     # Things still left
     accuracy_calculation_function = calculate_accuracy_regression if number_of_labels == 1 else calculate_accuracy_classification
 
+    # Fairness calculation function
+    if fairness_function.lower() == 'equal_odds':
+        fairness_function = equal_odds
+    elif fairness_function.lower() == 'demographic_parity':
+        fairness_function = demographic_parity
+    elif fairness_function.lower() == 'equal_opportunity':
+        fairness_function = equal_opportunity
+    else:
+        print("following type are supported: equal_odds, demographic_parity, equal_opportunity")
+        raise NotImplementedError
+
+    # Fairness score function
+    if fairness_score_function.lower() == 'grms':
+        fairness_score_function = calculate_grms
+    elif fairness_score_function.lower() == 'demographic_parity':
+        fairness_score_function = calculate_demographic_parity
+    elif fairness_score_function.lower() == 'equal_opportunity':
+        fairness_score_function = calculate_equal_opportunity
+    elif fairness_score_function.lower() == 'equal_odds':
+        fairness_score_function = calculate_equal_odds
+    else:
+        print("following type are supported: grms, equal_odds, demographic_parity, equal_opportunity")
+        raise NotImplementedError
+
 
 
     if train_main_model:
@@ -462,7 +510,9 @@ def main(emb_dim:int,
             'fair_grad': fair_grad,
             'reset_fairness': reset_fairness,
             'use_lr_schedule': use_lr_schedule,
-            'lr_scheduler': lr_scheduler
+            'lr_scheduler': lr_scheduler,
+            'fairness_function': fairness_function,
+            'fairness_score_function':fairness_score_function
         }
 
 
