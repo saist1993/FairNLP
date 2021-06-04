@@ -226,6 +226,7 @@ def main(emb_dim:int,
     else:
         wandb = False
 
+
     if config_dict == 'simple':
         BILSTM_PARAMS = config.BILSTM_PARAMS
     elif config_dict == 'three_layer':
