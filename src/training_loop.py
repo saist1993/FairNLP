@@ -1,11 +1,11 @@
 import time
 import math
 import torch
-import string
+import itertools
 import numpy as np
 from tqdm.auto import tqdm
+from string import ascii_lowercase
 from models import initialize_parameters
-
 
 # custom imports
 from utils import CustomError, get_enc_grad_norm
@@ -47,10 +47,17 @@ def train(model, iterator, optimizer, criterion, device, accuracy_calculation_fu
 
         optimizer.zero_grad()
 
+
         if return_hidden:
             predictions, original_hidden, hidden_noise = model(text, lengths, return_hidden=return_hidden)
         else:
             predictions = model(text, lengths)
+
+        if len(predictions) == 2:
+            adv_output = predictions[1]
+            predictions = predictions[0]
+
+
 
         if is_regression:
             loss = criterion(predictions.squeeze(), labels.squeeze())
@@ -100,6 +107,10 @@ def evaluate(model, iterator, criterion, device, accuracy_calculation_function, 
 
 
             predictions = model(text, lengths)
+
+            if len(predictions) == 2:
+                adv_output = predictions[1]
+                predictions = predictions[0]
 
             if len(items) == 4:
                 y.append(labels)
@@ -203,8 +214,7 @@ def train_adv(model, iterator, optimizer, criterion, device, accuracy_calculatio
     return np.mean(epoch_total_loss), np.mean(epoch_loss_main), np.mean(epoch_acc_main), np.mean(epoch_loss_aux), np.mean(epoch_acc_aux)
 
 
-from string import ascii_lowercase
-import itertools
+
 
 def iter_all_strings():
     for size in itertools.count(1):
