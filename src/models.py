@@ -533,6 +533,52 @@ class BiLSTMAdvWithFreeze(nn.Module):
         return prediction, adv_output
 
 
+
+class LinearAdv(BiLSTMAdvWithFreeze):
+    """would be composed of encoder, decoder and adv """
+    def __init__(self, model_params):
+        # super().__init__()
+        nn.Module.__init__(self)
+        hid_dim = model_params['hidden_dim']
+        output_dim = model_params['output_dim']
+        input_dim = model_params['input_dim']
+        adv_output_dim = model_params['number_of_aux_labels']
+
+        adv_dropout = model_params['adv_dropout']
+        self.device = model_params['device']
+        self.noise_layer = model_params['noise_layer']
+        self.eps = model_params['eps']
+
+        self.adv = DomainAdv(number_of_layers=1, input_dim=2 * hid_dim,
+                             hidden_dim=hid_dim, output_dim=adv_output_dim, dropout=adv_dropout)
+        self.classifier = DomainAdv(number_of_layers=2, input_dim=2 * hid_dim,
+                                    hidden_dim=hid_dim, output_dim=output_dim, dropout=adv_dropout)
+
+        model_params['output_dim'] = 2*hid_dim
+        self.embedder = LinearLayers(model_params)
+
+
+
+        self.adv.apply(initialize_parameters)  # don't know, if this is needed.
+        self.classifier.apply(initialize_parameters)  # don't know, if this is needed.
+        self.embedder.apply(initialize_parameters)  # don't know, if this is needed.
+
+    def freeze_unfreeze_embedder(self, freeze=True):
+        if freeze:
+            for param_group in self.embedder.parameters():
+                param_group.requires_grad = False
+        else:
+            for param_group in self.embedder.parameters():
+                param_group.requires_grad = True
+
+    @property
+    def layers(self):
+        return torch.nn.ModuleList([self.embedder, self.classifier, self.adv])
+
+
+
+
+
 def initialize_parameters(m):
     if isinstance(m, nn.Embedding):
         nn.init.uniform_(m.weight, -0.05, 0.05)

@@ -4,9 +4,7 @@ import torch
 import string
 import numpy as np
 from tqdm.auto import tqdm
-from typing import List, Union
 from models import initialize_parameters
-from utils import equal_odds, calculate_grms
 
 
 # custom imports
@@ -120,10 +118,17 @@ def evaluate(model, iterator, criterion, device, accuracy_calculation_function, 
             epoch_acc += acc
 
     if is_grms:
+        fairness_score_function = other_params['fairness_score_function']
         all_preds = torch.cat(all_preds, out=torch.Tensor(len(all_preds), all_preds[0].shape[0])).to(device)
         y = torch.cat(y, out=torch.Tensor(len(y), y[0].shape[0])).to(device)
         s = torch.cat(s, out=torch.Tensor(len(s), s[0].shape[0])).to(device)
-        grms, group_fairness = calculate_grms(all_preds, y, s)
+        total_no_main_classes, total_no_aux_classes = len(torch.unique(y)), len(torch.unique(s))
+        scoring_function_params = {
+            'device': device,
+            'total_no_aux_classes':total_no_aux_classes,
+            'total_no_main_classes':total_no_main_classes
+        }
+        grms, group_fairness = fairness_score_function(all_preds, y, s, scoring_function_params)
 
     return epoch_loss / len(iterator), epoch_acc / len(iterator), grms
 
@@ -223,6 +228,7 @@ def train_fair_grad(model, iterator, optimizer, criterion, device, accuracy_calc
     batch_size_flag = True
     model.train()
     is_regression = other_params['is_regression']
+    fairness_function = other_params['fairness_function']
 
     try:
         wandb = other_params['wandb']
@@ -256,8 +262,11 @@ def train_fair_grad(model, iterator, optimizer, criterion, device, accuracy_calc
     total_no_main_classes, total_no_aux_classes = len(torch.unique(all_labels)), len(torch.unique(all_aux))
 
     all_preds = generate_predictions(model, iterator, device)
+    if len(all_preds) == 2:
+        all_preds = all_preds[0]
+
     if not fairness_lookup.any():
-        group_fairness, fairness_lookup = equal_odds(preds=all_preds, y=all_labels, s=all_aux, device=device,
+        group_fairness, fairness_lookup = fairness_function(preds=all_preds, y=all_labels, s=all_aux, device=device,
                                                           total_no_main_classes=total_no_main_classes,
                                                           total_no_aux_classes=total_no_aux_classes,
                                                           epsilon=0.0)
@@ -280,6 +289,9 @@ def train_fair_grad(model, iterator, optimizer, criterion, device, accuracy_calc
         optimizer.zero_grad()
 
         predictions = model(text, lengths)
+        if len(predictions) == 2:
+            adv_output = predictions[1]
+            predictions = predictions[0]
 
         # generate all prediction to be used in fair_grad
 
@@ -297,7 +309,9 @@ def train_fair_grad(model, iterator, optimizer, criterion, device, accuracy_calc
         acc = accuracy_calculation_function(predictions, labels)
 
         all_preds = generate_predictions(model, iterator, device)
-        interm_group_fairness, interm_fairness_lookup = equal_odds(preds=all_preds, y=all_labels,
+        if len(all_preds) == 2:
+            all_preds = all_preds[0]
+        interm_group_fairness, interm_fairness_lookup = fairness_function(preds=all_preds, y=all_labels,
                                                                                    s=all_aux, device=device,
                                                                                    total_no_main_classes=total_no_main_classes,
                                                                                    total_no_aux_classes=total_no_aux_classes,
@@ -305,7 +319,9 @@ def train_fair_grad(model, iterator, optimizer, criterion, device, accuracy_calc
         fairness_lookup = fairness_lookup + interm_fairness_lookup
 
         if wandb:
-            fairness_wandb = [0 if math.isnan(i) else i  for i in interm_fairness_lookup.view(-1).detach().cpu().numpy()]
+            # fairness_wandb = [0 if math.isnan(i) else i  for i in interm_fairness_lookup.view(-1).detach().cpu().numpy()]
+            fairness_wandb = torch.stack(([interm_fairness_lookup[i] for i in range(len(interm_fairness_lookup))]),dim=1).view(-1)
+            fairness_wandb = [0 if math.isnan(i) else i  for i in fairness_wandb.detach().cpu().numpy()]
             # keys = [char for char in string.ascii_lowercase[:len(fairness_wandb)]]
 
             keys = []
@@ -321,7 +337,7 @@ def train_fair_grad(model, iterator, optimizer, criterion, device, accuracy_calc
 
         epoch_loss += loss.item()
         epoch_acc += acc.item()
-
+        print(interm_fairness_lookup)
     return epoch_loss / len(iterator), epoch_acc / len(iterator), group_fairness, fairness_lookup
 
 
@@ -352,6 +368,9 @@ def evaluate_fair_grad(model, iterator, criterion, device, accuracy_calculation_
             s.append(aux)
 
             predictions = model(text, lengths)
+            if len(predictions) == 2:
+                adv_output = predictions[1]
+                predictions = predictions[0]
 
             # loss = criterion(predictions, labels)
             if is_regression:
@@ -370,9 +389,18 @@ def evaluate_fair_grad(model, iterator, criterion, device, accuracy_calculation_
         all_preds = torch.cat(all_preds, out=torch.Tensor(len(all_preds), all_preds[0].shape[0])).to(device)
         y = torch.cat(y, out=torch.Tensor(len(y), y[0].shape[0])).to(device)
         s = torch.cat(s, out=torch.Tensor(len(s), s[0].shape[0])).to(device)
-        grms, group_fairness = calculate_grms(all_preds, y, s)
+        total_no_main_classes, total_no_aux_classes = len(torch.unique(y)), len(torch.unique(s))
+        scoring_function_params = {
+            'device': device,
+            'total_no_aux_classes':total_no_aux_classes,
+            'total_no_main_classes':total_no_main_classes
+        }
+        fairness_score_function = other_params['fairness_score_function']
+        grms, group_fairness = fairness_score_function(all_preds, y, s, scoring_function_params)
+
 
     return epoch_loss / len(iterator), epoch_acc / len(iterator), grms
+
 
 def train_adv_three_phase(model, iterator, optimizer, criterion, device, accuracy_calculation_function, phase, other_params):
     print("using a three phase training loop")
@@ -772,7 +800,14 @@ def evaluate_adv(model, iterator, criterion, device, accuracy_calculation_functi
             all_preds = torch.cat(all_preds, out=torch.Tensor(len(all_preds), all_preds[0].shape[0])).to(device)
             y = torch.cat(y, out=torch.Tensor(len(y), y[0].shape[0])).to(device)
             s = torch.cat(s, out=torch.Tensor(len(s), s[0].shape[0])).to(device)
-            grms, group_fairness = calculate_grms(all_preds, y, s)
+            fairness_score_function = other_params['fairness_score_function']
+            total_no_main_classes, total_no_aux_classes = len(torch.unique(y)), len(torch.unique(s))
+            scoring_function_params = {
+                'device': device,
+                'total_no_aux_classes': total_no_aux_classes,
+                'total_no_main_classes': total_no_main_classes
+            }
+            grms, group_fairness = fairness_score_function(all_preds, y, s, scoring_function_params)
         else:
             grms = 0.0
 
@@ -785,7 +820,10 @@ def generate_predictions(model, iterator, device):
         for labels, text, lengths, aux in tqdm(iterator):
             text = text.to(device)
             predictions = model(text, lengths)
-            all_preds.append(predictions.argmax(1))
+            if len(predictions) == 2:
+                all_preds.append(predictions[0].argmax(1))
+            else:
+                all_preds.append(predictions.argmax(1))
     # flattening all_preds
     all_preds = torch.cat(all_preds, out=torch.Tensor(len(all_preds), all_preds[0].shape[0])).to(device)
     return all_preds
@@ -825,6 +863,7 @@ def basic_training_loop(
     save_model = other_params['save_model']
     original_eps = other_params['eps']
     eps_scale = other_params['eps_scale']
+
     try:
         use_lr_schedule = other_params['use_lr_schedule']
     except KeyError:
@@ -1037,8 +1076,9 @@ def basic_training_loop(
             print(f'Epoch: {epoch + 1:02} | Epoch Time: {epoch_mins}m {epoch_secs}s')
             print(f'\tTrain Loss: {train_loss:.3f} | Train Acc: {train_acc}%')
             print(f'\t Val. Loss: {valid_loss:.3f} |  Val. Acc: {valid_acc}%')
+            print(f'\t Val. Loss: {valid_loss:.3f} |  Val. Acc: {valid_acc}%')
             print(f'\t Test Loss: {test_loss:.3f} |  Val. Acc: {test_acc}%')
-            print(f'\t grms: {grms:.3f}')
+            print(f'\t grms: {grms}')
 
             if wandb:
                 wandb.log({
@@ -1239,7 +1279,7 @@ def three_phase_training_loop(
         print(f'\tTrain Loss: {train_loss:.3f} | Train Acc: {train_acc}%')
         print(f'\t Val. Loss: {valid_loss:.3f} |  Val. Acc: {valid_acc}%')
         print(f'\t Test Loss: {test_loss:.3f} |  Val. Acc: {test_acc}%')
-        print(f'\t grms: {grms:.5f}%')
+        print(f'\t grms: {grms}')
 
         # print(enc_grad_norm)
         if wandb:

@@ -195,7 +195,7 @@ class WikiSimpleClassification:
         if number_of_labels > 100:
             number_of_labels = 1 # if there are too many labels, most probably it is a regression task and not classifiation
 
-        return vocab, number_of_labels, train_iterator, dev_iterator, test_iterator
+        return vocab, number_of_labels, train_iterator, dev_iterator, test_iterator, 0
 
 
 class ValencePrediction(WikiSimpleClassification):
@@ -306,7 +306,7 @@ class ValencePrediction(WikiSimpleClassification):
         # if number_of_labels > 100:
         #     number_of_labels = 1 # if there are too many labels, most probably it is a regression task and not classifiation
 
-        return vocab, number_of_labels, train_iterator, dev_iterator, test_iterator
+        return vocab, number_of_labels, train_iterator, dev_iterator, test_iterator, 0
 
 
 class BiasinBiosSimple(WikiSimpleClassification):
@@ -402,7 +402,7 @@ class BiasinBiosSimple(WikiSimpleClassification):
         if number_of_labels > 100:
             number_of_labels = 1 # if there are too many labels, most probably it is a regression task and not classifiation
 
-        return vocab, number_of_labels, train_iterator, dev_iterator, test_iterator
+        return vocab, number_of_labels, train_iterator, dev_iterator, test_iterator, 0
 
 class BiasinBiosSimpleAdv(WikiSimpleClassification):
 
@@ -547,7 +547,7 @@ class BiasinBiosSimpleAdv(WikiSimpleClassification):
         if number_of_labels > 100:
             number_of_labels = 1 # if there are too many labels, most probably it is a regression task and not classifiation
 
-        return vocab, number_of_labels, train_iterator, dev_iterator, test_iterator
+        return vocab, number_of_labels, train_iterator, dev_iterator, test_iterator, len(gender_to_id)
 
 
 
@@ -643,6 +643,6 @@ class SimpleAdvDatasetReader():
                                                     collate_fn=self.collate
                                                     )
 
-        return vocab, number_of_labels, train_iterator, dev_iterator, test_iterator
+        return vocab, number_of_labels, train_iterator, dev_iterator, test_iterator, len(np.unique(self.s))
 
 
