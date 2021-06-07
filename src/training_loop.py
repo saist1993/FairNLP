@@ -1090,9 +1090,10 @@ def basic_training_loop(
             print(f'\t Val. Loss: {valid_loss:.3f} |  Val. Acc: {valid_acc}%')
             print(f'\t Test Loss: {test_loss:.3f} |  Val. Acc: {test_acc}%')
             print(f'\t grms: {grms}')
-            if np.sum(grms) < np.sum(current_best_grms) and epoch > 0.5*n_epochs:
+            print(f'\t current best grms till now: {current_best_grms}')
+            if np.sum(grms) < np.sum(current_best_grms) and epoch > 0.5 * n_epochs:
                 current_best_grms = grms
-                print(f'\t current best grms: {current_best_grms}')
+                print(f'\t updated current best grms: {current_best_grms}')
 
             if wandb:
                 wandb.log({
@@ -1103,7 +1104,8 @@ def basic_training_loop(
                     'train_acc': train_acc,
                     'valid_acc': valid_acc,
                     'test_acc': test_acc,
-                    'grms': grms
+                    'grms': grms,
+                    'current best grms': current_best_grms
                 })
 
 
@@ -1295,9 +1297,10 @@ def three_phase_training_loop(
         print(f'\t Val. Loss: {valid_loss:.3f} |  Val. Acc: {valid_acc}%')
         print(f'\t Test Loss: {test_loss:.3f} |  Val. Acc: {test_acc}%')
         print(f'\t grms: {grms}')
+        print(f'\t current best grms till now: {current_best_grms}')
         if np.sum(grms) < np.sum(current_best_grms) and epoch > 0.5 * n_epochs:
             current_best_grms = grms
-            print(f'\t current best grms: {current_best_grms}')
+            print(f'\t updated current best grms: {current_best_grms}')
 
         # print(enc_grad_norm)
         if wandb:
@@ -1324,7 +1327,8 @@ def three_phase_training_loop(
                 'test_acc_aux': test_acc_aux,
                 'epoch': epoch,
                 'encoder_norm': enc_grad_norm,
-                'grms': grms
+                'grms': grms,
+                'current best grms': current_best_grms
             })
 
     if not only_perturbate:
