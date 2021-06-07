@@ -873,6 +873,7 @@ def basic_training_loop(
     save_model = other_params['save_model']
     original_eps = other_params['eps']
     eps_scale = other_params['eps_scale']
+    current_best_grms = math.inf
 
     try:
         use_lr_schedule = other_params['use_lr_schedule']
@@ -1089,6 +1090,9 @@ def basic_training_loop(
             print(f'\t Val. Loss: {valid_loss:.3f} |  Val. Acc: {valid_acc}%')
             print(f'\t Test Loss: {test_loss:.3f} |  Val. Acc: {test_acc}%')
             print(f'\t grms: {grms}')
+            if np.sum(grms) < np.sum(current_best_grms) and epoch > 0.5*n_epochs:
+                current_best_grms = grms
+                print(f'\t current best grms: {current_best_grms}')
 
             if wandb:
                 wandb.log({
@@ -1133,6 +1137,7 @@ def three_phase_training_loop(
     print(f"is adv: {is_adv}")
     reset_classifier = other_params['reset_classifier']
     reset_adv = other_params['reset_adv']
+    current_best_grms = math.inf
 
     try:
         is_post_hoc = other_params['is_post_hoc']
@@ -1290,6 +1295,9 @@ def three_phase_training_loop(
         print(f'\t Val. Loss: {valid_loss:.3f} |  Val. Acc: {valid_acc}%')
         print(f'\t Test Loss: {test_loss:.3f} |  Val. Acc: {test_acc}%')
         print(f'\t grms: {grms}')
+        if np.sum(grms) < np.sum(current_best_grms) and epoch > 0.5 * n_epochs:
+            current_best_grms = grms
+            print(f'\t current best grms: {current_best_grms}')
 
         # print(enc_grad_norm)
         if wandb:
