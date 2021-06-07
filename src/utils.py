@@ -414,7 +414,7 @@ def equal_opportunity(preds, y, s, device, total_no_main_classes, total_no_aux_c
                 g_fairness_pos = torch.sign(g_fairness_pos) * torch.clip(torch.abs(g_fairness_pos) - epsilon, 0, None)
             else: # uc = 0 which in our case is negative class
                 g_fairness_pos = torch.tensor(0.0).to(device) # TODO: check if g_fairness_pos in the obove if condition is of the same type
-            fairness[mask_pos] = g_fairness_pos
+            fairness[mask_pos] = g_fairness_pos # imposing the scores on the mask.
             group_fairness[uc][group] = g_fairness_pos
             fairness_lookup[int(uc.item()),int(group.item())] = g_fairness_pos
 
