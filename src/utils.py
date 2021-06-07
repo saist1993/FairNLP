@@ -456,11 +456,8 @@ def calculate_equal_odds(preds,y,s, other_params):
     total_no_aux_classes = other_params['total_no_aux_classes']
     total_no_main_classes = other_params['total_no_main_classes']
     group_fairness, fairness_lookup = equal_odds(preds, y, s, device, total_no_main_classes, total_no_aux_classes, epsilon=0.0)
-    sorted_class = np.sort([key for key,value in group_fairness.items()])
+    sorted_class = np.sort([key.item() for key,value in group_fairness.items()])
     group_fairness = {key.item():value for key,value in group_fairness.items()}
-    print(sorted_class)
-    print("***")
-    print(group_fairness)
     scores = []
     for key in sorted_class:
         for key1, value1 in group_fairness[key].items():
