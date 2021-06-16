@@ -1096,7 +1096,7 @@ def basic_training_loop(
             print(f'\t Test Loss: {test_loss:.3f} |  Val. Acc: {test_acc}%')
             print(f'\t grms: {grms}')
             print(f'\t current best grms till now: {current_best_grms}')
-            if np.sum(grms) < np.sum(current_best_grms) and epoch > 0.5 * n_epochs:
+            if np.sum(grms) < np.sum([abs(i) for i in current_best_grms]) and epoch > 0.5 * n_epochs:
                 current_best_grms = grms
                 print(f'\t updated current best grms: {current_best_grms}')
 
@@ -1301,7 +1301,7 @@ def three_phase_training_loop(
         print(f'\t Test Loss: {test_loss:.3f} |  Val. Acc: {test_acc}%')
         print(f'\t grms: {grms}')
         print(f'\t current best grms till now: {current_best_grms}')
-        if np.sum(grms) < np.sum(current_best_grms) and epoch > 0.5 * n_epochs:
+        if np.sum(grms) < np.sum([abs(i) for i in current_best_grms]) and epoch > 0.5 * n_epochs:
             current_best_grms = grms
             print(f'\t updated current best grms: {current_best_grms}')
 
