@@ -710,10 +710,20 @@ class EncodedEmoji:
 
     def run(self):
 
-        train_pos_pos, dev_pos_pos, test_pos_pos = self.read_data_file(f"{self.folder_location}/pos_pos.npy")
-        train_pos_neg, dev_pos_neg, test_pos_neg = self.read_data_file(f"{self.folder_location}/pos_neg.npy")
-        train_neg_pos, dev_neg_pos, test_neg_pos = self.read_data_file(f"{self.folder_location}/neg_pos.npy")
-        train_neg_neg, dev_neg_neg, test_neg_neg = self.read_data_file(f"{self.folder_location}/neg_neg.npy")
+        try:
+
+            train_pos_pos, dev_pos_pos, test_pos_pos = self.read_data_file(f"{self.folder_location}/pos_pos.npy")
+            train_pos_neg, dev_pos_neg, test_pos_neg = self.read_data_file(f"{self.folder_location}/pos_neg.npy")
+            train_neg_pos, dev_neg_pos, test_neg_pos = self.read_data_file(f"{self.folder_location}/neg_pos.npy")
+            train_neg_neg, dev_neg_neg, test_neg_neg = self.read_data_file(f"{self.folder_location}/neg_neg.npy")
+
+        except:
+
+            self.folder_location = '/home/gmaheshwari/storage/fair_nlp_dataset/data'
+            train_pos_pos, dev_pos_pos, test_pos_pos = self.read_data_file(f"{self.folder_location}/pos_pos.npy")
+            train_pos_neg, dev_pos_neg, test_pos_neg = self.read_data_file(f"{self.folder_location}/pos_neg.npy")
+            train_neg_pos, dev_neg_pos, test_neg_pos = self.read_data_file(f"{self.folder_location}/neg_pos.npy")
+            train_neg_neg, dev_neg_neg, test_neg_neg = self.read_data_file(f"{self.folder_location}/neg_neg.npy")
 
 
         n_1 = int(self.n * self.ratio / 2)
