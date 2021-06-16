@@ -32,7 +32,7 @@ from utils import clean_text as clean_text_function
 from utils import clean_text_tweet as clean_text_function_tweet
 from utils import equal_odds, demographic_parity, equal_opportunity
 from training_loop import basic_training_loop, three_phase_training_loop
-from utils import calculate_grms, calculate_demographic_parity, calculate_equal_opportunity, calculate_equal_odds
+from utils import calculate_grms, calculate_demographic_parity, calculate_equal_opportunity, calculate_equal_odds, calculate_true_rates
 from models import BiLSTM, initialize_parameters, BiLSTMAdv, BOWClassifier, Attacker, CNN, BiLSTMAdvWithFreeze, LinearLayers, LinearAdv
 
 import bias_in_bios_analysis
@@ -82,10 +82,14 @@ def generate_data_iterator(dataset_name:str, **kwargs):
             dataset_creator = create_data.BiasinBiosSimple(dataset_name=dataset_name, **kwargs)
             vocab, number_of_labels, train_iterator, dev_iterator, test_iterator, number_of_aux_labels = dataset_creator.run()
             # return vocab, number_of_labels, train_iterator, dev_iterator, test_iterator
+
     elif dataset_name.lower() in "_".join(['celeb', 'crime', 'dutch', 'compas', 'german', 'adult', 'gaussian','adult', 'multigroups']):
         dataset_creator = create_data.SimpleAdvDatasetReader(dataset_name=dataset_name, **kwargs)
         vocab, number_of_labels, train_iterator, dev_iterator, test_iterator, number_of_aux_labels = dataset_creator.run()
 
+    elif dataset_name.lower() == 'encoded_emoji':
+        dataset_creator = create_data.EncodedEmoji(dataset_name=dataset_name, **kwargs)
+        vocab, number_of_labels, train_iterator, dev_iterator, test_iterator, number_of_aux_labels = dataset_creator.run()
     else:
         raise CustomError("No such dataset")
 
@@ -481,6 +485,8 @@ def main(emb_dim:int,
         fairness_score_function = calculate_equal_opportunity
     elif fairness_score_function.lower() == 'equal_odds':
         fairness_score_function = calculate_equal_odds
+    elif fairness_score_function.lower() == 'true_rates':
+        fairness_score_function = calculate_true_rates
     else:
         print("following type are supported: grms, equal_odds, demographic_parity, equal_opportunity")
         raise NotImplementedError

@@ -411,7 +411,6 @@ def evaluate_fair_grad(model, iterator, criterion, device, accuracy_calculation_
 
     return epoch_loss / len(iterator), epoch_acc / len(iterator), grms
 
-
 def train_adv_three_phase(model, iterator, optimizer, criterion, device, accuracy_calculation_function, phase, other_params):
     print("using a three phase training loop")
     model.train()
@@ -545,6 +544,10 @@ def train_adv_three_phase(model, iterator, optimizer, criterion, device, accurac
 
     return epoch_loss_main/ len(iterator), epoch_loss_aux/ len(iterator), epoch_loss_total/len(iterator),\
            epoch_acc_main/ len(iterator), epoch_acc_aux/ len(iterator)
+
+
+
+
 
 
 def train_adv_three_phase_custom(model, iterator, optimizer, criterion, device, accuracy_calculation_function, phase, other_params):
@@ -824,6 +827,10 @@ def evaluate_adv(model, iterator, criterion, device, accuracy_calculation_functi
     return np.mean(epoch_total_loss ), np.mean(epoch_loss_main), np.mean(epoch_acc_main), np.mean(epoch_loss_aux), np.mean(epoch_acc_aux), grms
 
 
+
+
+
+
 def generate_predictions(model, iterator, device):
     all_preds = []
     with torch.no_grad():
@@ -837,8 +844,6 @@ def generate_predictions(model, iterator, device):
     # flattening all_preds
     all_preds = torch.cat(all_preds, out=torch.Tensor(len(all_preds), all_preds[0].shape[0])).to(device)
     return all_preds
-
-
 
 
 def freeze(opt: torch.optim, layer: str, model: torch.nn.Module):
@@ -1110,8 +1115,6 @@ def basic_training_loop(
 
 
     return best_test_acc, best_valid_acc, test_acc_at_best_valid_acc
-
-
 
 
 def three_phase_training_loop(

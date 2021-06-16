@@ -6,6 +6,7 @@ import warnings
 import numpy as np
 from tqdm import tqdm
 from typing import List, Dict
+from sklearn.metrics import confusion_matrix
 
 import torch
 import torch.nn as nn
@@ -503,6 +504,37 @@ def calculate_grms(preds, y, s, other_params=None):
     return np.sqrt(np.mean(scores)), group_fairness
 
 
+def calculate_true_rates(preds, y, s, other_params):
+    '''
+    inspired from https://github.com/HanXudong/Diverse_Adversaries_for_Mitigating_Bias_in_Training/blob/b5b4c99ada17b3c19ab2ae8789bb56058cb72643/networks/eval_metrices.py#L14
+    :param preds:
+    :param y:
+    :param s:
+    :param other_params:
+    :return:
+    '''
+    unique_group = torch.sort(torch.unique(s))[0]
+    assert len(unique_group) == 2
+
+    g1_preds = preds[s == 1]
+    g1_labels = y[s == 1]
+
+    g0_preds = preds[s == 0]
+    g0_labels = y[s == 0]
+
+
+    tn0, fp0, fn0, tp0 = confusion_matrix(g0_labels.cpu().detach().numpy(), g0_preds.cpu().detach().numpy()).ravel()
+    TPR0 = tp0/(fn0+tp0)
+    TNR0 = tn0/(fp0+tn0)
+
+    tn1, fp1, fn1, tp1 = confusion_matrix(g1_labels.cpu().detach().numpy(), g1_preds.cpu().detach().numpy()).ravel()
+    TPR1 = tp1/(fn1+tp1)
+    TNR1 = tn1/(tn1+fp1)
+
+    TPR_gap = TPR0-TPR1
+    TNR_gap = TNR0-TNR1
+
+    return [TPR_gap,TNR_gap], ((abs(TPR_gap)+abs(TNR_gap))/2.0)
 
 
 
