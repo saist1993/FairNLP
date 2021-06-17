@@ -674,7 +674,7 @@ class EncodedEmoji:
         try:
             self.ratio = params['ratio_of_pos_neg']
         except:
-            self.ratio = 0.7 # this the default in https://arxiv.org/pdf/2101.10001.pdf
+            self.ratio = 0.8 # this the default in https://arxiv.org/pdf/2101.10001.pdf
         self.batch_size = params['batch_size']
 
     def read_data_file(self, input_file: str):

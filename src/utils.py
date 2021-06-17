@@ -579,4 +579,81 @@ def custom_equal_odds(preds, y, s, device, total_no_main_classes, total_no_aux_c
 
     return group_fairness, fairness_lookup
 
+potential_stop_word_list = [
+    ['uh', ','],
+    [',', 'uh'],
+    ['you', 'know'],
+    ['you', 'know', ','],
+    ['Yeah', '.'],
+    ['.', 'Yeah'],
+    ['Yeah', ','],
+    ['Uh', ','],
+    ['Uh-huh'],
+    ['the', ',']
+]
 
+potential_stop_word_list = [" ".join(k) for k in potential_stop_word_list]
+
+
+def format_input(tokens):
+    sentence_string = " ".join(tokens)
+    #     sentence_string = "".join(sentence).lower()
+    flag = True
+    current_string = ""
+    while flag:
+        for p in potential_stop_word_list:
+            sentence_string = sentence_string.replace(p.lower(), " ")
+
+            sentence_string = sentence_string.replace(', ,', ' , ')
+            sentence_string = sentence_string.replace(', .', ' . ')
+            sentence_string = sentence_string.replace('. ,', ' . ')
+            sentence_string = re.sub("\s\s+", " ", sentence_string)
+
+            split_string = sentence_string.split(" ")
+            repetative_words = []  # patter word , word
+            print(sentence_string)
+
+            for index, word in enumerate(split_string):
+                try:
+                    next_word = split_string[min(len(split_string) - 1, index + 2)]
+                    between_word = split_string[min(len(split_string) - 1, index + 1)]
+                except IndexError:
+                    print(min(len(split_string), index + 2), len(split_string))
+                if next_word == word and word not in  [''] :
+                    repetative_words.append([f'{word} {between_word} {word}', word])
+
+                try:
+                    next_word = split_string[min(len(split_string) - 1, index + 1)]
+                    next_next_word = split_string[min(len(split_string) - 1, index + 3)]
+                    next_next_next_word = split_string[min(len(split_string) - 1, index + 4)]
+                except IndexError:
+                    print(min(len(split_string), index + 2), len(split_string))
+                if next_next_word == word and next_word == next_next_next_word and word not in  ['']:
+                    repetative_words.append([f'{word} {next_word} , {word} {next_word}', f'{word} {next_word}'])
+            print(repetative_words)
+            for w_pattern, w_replace in repetative_words:
+                sentence_string = sentence_string.replace(w_pattern, w_replace)
+
+        if current_string == sentence_string:
+            flag = False
+        else:
+            current_string = sentence_string
+
+    return sentence_string.strip()
+
+if __name__ == '__main__':
+    # a = format_input(['I',
+    #               'have',
+    #               ',',
+    #               'am',
+    #               ',',
+    #               'I',
+    #               'disco',
+    #               'dancer',
+    #               'uh',
+    #               ','])
+
+    a = format_input(['to', 'be', 'a', 'surrogate', 'parent', 'for', 'parent', 'for'])
+
+
+    print(a)
