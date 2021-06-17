@@ -879,6 +879,7 @@ def basic_training_loop(
     original_eps = other_params['eps']
     eps_scale = other_params['eps_scale']
     current_best_grms = [math.inf]
+    test_acc_at_best_grms = 0.0
 
     try:
         use_lr_schedule = other_params['use_lr_schedule']
@@ -1095,9 +1096,10 @@ def basic_training_loop(
             print(f'\t Val. Loss: {valid_loss:.3f} |  Val. Acc: {valid_acc}%')
             print(f'\t Test Loss: {test_loss:.3f} |  Val. Acc: {test_acc}%')
             print(f'\t grms: {grms}')
-            print(f'\t current best grms till now: {current_best_grms}')
-            if np.sum(grms) < np.sum([abs(i) for i in current_best_grms]) and epoch > 0.5 * n_epochs:
+            print(f'\t current best grms till now: {current_best_grms} and test acc:  {test_acc_at_best_grms}')
+            if np.sum([abs(i) for i in grms]) < np.sum([abs(i) for i in current_best_grms]) and epoch > 0.5 * n_epochs and test_acc > 73.1:
                 current_best_grms = grms
+                test_acc_at_best_grms = test_acc
                 print(f'\t updated current best grms: {current_best_grms}')
 
             if wandb:
@@ -1143,6 +1145,7 @@ def three_phase_training_loop(
     reset_classifier = other_params['reset_classifier']
     reset_adv = other_params['reset_adv']
     current_best_grms = [math.inf]
+    test_acc_at_best_grms = 0.0
 
     try:
         is_post_hoc = other_params['is_post_hoc']
@@ -1300,9 +1303,11 @@ def three_phase_training_loop(
         print(f'\t Val. Loss: {valid_loss:.3f} |  Val. Acc: {valid_acc}%')
         print(f'\t Test Loss: {test_loss:.3f} |  Val. Acc: {test_acc}%')
         print(f'\t grms: {grms}')
-        print(f'\t current best grms till now: {current_best_grms}')
-        if np.sum(grms) < np.sum([abs(i) for i in current_best_grms]) and epoch > 0.5 * n_epochs:
+        print(f'\t current best grms till now: {current_best_grms} and test acc:  {test_acc_at_best_grms}')
+        if np.sum([abs(i) for i in grms]) < np.sum(
+                [abs(i) for i in current_best_grms]) and epoch > 0.5 * n_epochs and test_acc > 73.1:
             current_best_grms = grms
+            test_acc_at_best_grms = test_acc
             print(f'\t updated current best grms: {current_best_grms}')
 
         # print(enc_grad_norm)
