@@ -4,6 +4,7 @@ import torch
 import itertools
 import numpy as np
 from tqdm.auto import tqdm
+from sklearn.svm import LinearSVC
 from string import ascii_lowercase
 from models import initialize_parameters
 
@@ -846,20 +847,32 @@ def generate_predictions(model, iterator, device):
     return all_preds
 
 
-def generate_hidden_representation(model, iterator, device):
-    all_preds = []
-    with torch.no_grad():
-        for labels, text, lengths, aux in tqdm(iterator):
-            text = text.to(device)
-            predictions, original_hidden, hidden = model(text, lengths, return_hidden=True)
-            if len(predictions) == 2:
-                all_preds.append(predictions[0].argmax(1))
-            else:
-                all_preds.append(predictions.argmax(1))
-    # flattening all_preds
-    all_preds = torch.cat(all_preds, out=torch.Tensor(len(all_preds), all_preds[0].shape[0])).to(device)
-    return all_preds
+def calculate_lekage(model, dev_iterator, test_iterator, device):
 
+    def temp(model, iterator, device):
+        all_hidden = []
+        s = []
+        with torch.no_grad():
+            for labels, text, lengths, aux in tqdm(iterator):
+                text = text.to(device)
+                predictions, adv_output, _,  hidden = model(text, lengths, return_hidden=True)
+                if len(predictions) == 2:
+                    all_hidden.append(hidden)
+                else:
+                    all_hidden.append(hidden)
+                s.append(aux)
+
+        # flattening all_preds
+        s = torch.cat(s, out=torch.Tensor(len(s), s[0].shape[0])).detach().cpu().numpy()
+        all_hidden = torch.cat(all_hidden, out=torch.Tensor(len(all_hidden), all_hidden[0].shape[0])).detach().cpu().numpy()
+        return all_hidden, s
+
+    dev_preds, dev_aux = temp(model, dev_iterator, device)
+    test_preds, test_aux = temp(model, test_iterator, device)
+    biased_classifier = LinearSVC(fit_intercept=True, class_weight='balanced', dual=False, C=0.1, max_iter=10000)
+    biased_classifier.fit(dev_preds, dev_aux)
+    test_leakage = biased_classifier.score(test_preds, test_aux)
+    return test_leakage
 
 def freeze(opt: torch.optim, layer: str, model: torch.nn.Module):
     opt.param_groups[model.legend[layer]]['lr'] = 0
@@ -1161,6 +1174,7 @@ def three_phase_training_loop(
     reset_adv = other_params['reset_adv']
     current_best_grms = [math.inf]
     test_acc_at_best_grms = 0.0
+    leakage_at_best_grms = 100
 
     try:
         is_post_hoc = other_params['is_post_hoc']
@@ -1267,6 +1281,8 @@ def three_phase_training_loop(
                 accuracy_calculation_function,
                 phase, other_params)
 
+
+
             valid_total_loss, valid_loss_main, valid_acc_main, valid_loss_aux, valid_acc_aux, grms = evaluate_adv(model,
                                                                                                                   dev_iterator,
                                                                                                                   criterion,
@@ -1281,6 +1297,8 @@ def three_phase_training_loop(
                                                                                                              device,
                                                                                                              accuracy_calculation_function,
                                                                                                              other_params)
+
+            leakage = calculate_lekage(model, dev_iterator, test_iterator, device)
 
 
         else:
@@ -1318,11 +1336,13 @@ def three_phase_training_loop(
         print(f'\t Val. Loss: {valid_loss:.3f} |  Val. Acc: {valid_acc}%')
         print(f'\t Test Loss: {test_loss:.3f} |  Val. Acc: {test_acc}%')
         print(f'\t grms: {grms}')
-        print(f'\t current best grms till now: {current_best_grms} and test acc:  {test_acc_at_best_grms}')
+        print(f'\t leakage: {leakage}')
+        print(f'\t current best grms till now: {current_best_grms} and test acc:  {test_acc_at_best_grms} and leakage {leakage_at_best_grms}')
         if np.sum([abs(i) for i in grms]) < np.sum(
                 [abs(i) for i in current_best_grms]) and epoch > 0.5 * n_epochs and test_acc > 0.731:
             current_best_grms = grms
             test_acc_at_best_grms = test_acc
+            leakage_at_best_grms = leakage
             print(f'\t updated current best grms: {current_best_grms}')
 
         # print(enc_grad_norm)

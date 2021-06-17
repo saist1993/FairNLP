@@ -793,13 +793,13 @@ class EncodedEmoji:
                                                      )
 
         dev_iterator = torch.utils.data.DataLoader(dev_data,
-                                                   512,
+                                                   1024,
                                                    shuffle=False,
                                                    collate_fn=self.collate
                                                    )
 
         test_iterator = torch.utils.data.DataLoader(test_data,
-                                                    512,
+                                                    1024,
                                                     shuffle=False,
                                                     collate_fn=self.collate
                                                     )
