@@ -851,6 +851,7 @@ def calculate_lekage(model, dev_iterator, test_iterator, device):
 
     def temp(model, iterator, device):
         all_hidden = []
+        all_prediction = []
         s = []
         with torch.no_grad():
             for labels, text, lengths, aux in tqdm(iterator):
@@ -859,21 +860,30 @@ def calculate_lekage(model, dev_iterator, test_iterator, device):
                 predictions, adv_output, _,  hidden = model(text, lengths, return_hidden=True)
                 if len(predictions) == 2:
                     all_hidden.append(hidden.detach().cpu())
+                    all_prediction.append(predictions.detach().cpu())
                 else:
                     all_hidden.append(hidden.detach().cpu())
+                    all_prediction.append(predictions.detach().cpu())
                 s.append(aux)
 
         # flattening all_preds
         s = torch.cat(s, out=torch.Tensor(len(s), s[0].shape[0])).detach().cpu().numpy()
         all_hidden = torch.cat(all_hidden, out=torch.Tensor(len(all_hidden), all_hidden[0].shape[0])).detach().cpu().numpy()
-        return all_hidden, s
+        all_prediction = torch.cat(all_prediction, out=torch.Tensor(len(all_prediction), all_prediction[0].shape[0])).detach().cpu().numpy()
+        return all_hidden, s, all_prediction
 
-    dev_preds, dev_aux = temp(model, dev_iterator, device)
-    test_preds, test_aux = temp(model, test_iterator, device)
+    dev_preds, dev_aux, dev_logits = temp(model, dev_iterator, device)
+    test_preds, test_aux, test_logits = temp(model, test_iterator, device)
+
     biased_classifier = LinearSVC(fit_intercept=True, class_weight='balanced', dual=False, C=0.1, max_iter=10000)
     biased_classifier.fit(dev_preds, dev_aux)
-    test_leakage = biased_classifier.score(test_preds, test_aux)
-    return test_leakage
+    test_hidden_leakage = biased_classifier.score(test_preds, test_aux)
+
+    biased_classifier = LinearSVC(fit_intercept=True, class_weight='balanced', dual=False, C=0.1, max_iter=10000)
+    biased_classifier.fit(dev_logits, dev_aux)
+    test_logits_leakage = biased_classifier.score(test_logits, test_aux)
+
+    return test_hidden_leakage, test_logits_leakage
 
 def freeze(opt: torch.optim, layer: str, model: torch.nn.Module):
     opt.param_groups[model.legend[layer]]['lr'] = 0
@@ -1175,7 +1185,7 @@ def three_phase_training_loop(
     reset_adv = other_params['reset_adv']
     current_best_grms = [math.inf]
     test_acc_at_best_grms = 0.0
-    leakage_at_best_grms = 100
+    hidden_leakage_at_best_grms, logits_leakage_at_best_grms = 100, 100
 
     try:
         is_post_hoc = other_params['is_post_hoc']
@@ -1277,7 +1287,7 @@ def three_phase_training_loop(
 
             print(f"in three phase custom: training loop type is {training_loop_type}")
 
-
+            leakage = calculate_lekage(model, dev_iterator, test_iterator, device)
 
             train_loss_main, train_loss_aux, train_loss_total, train_acc_main, train_acc_aux = train_adv_three_phase_custom(
                 model,
@@ -1304,7 +1314,7 @@ def three_phase_training_loop(
                                                                                                              accuracy_calculation_function,
                                                                                                              other_params)
 
-            leakage = calculate_lekage(model, dev_iterator, test_iterator, device)
+            hidden_leakage, logits_leakage = calculate_lekage(model, dev_iterator, test_iterator, device)
 
 
         else:
@@ -1342,13 +1352,17 @@ def three_phase_training_loop(
         print(f'\t Val. Loss: {valid_loss:.3f} |  Val. Acc: {valid_acc}%')
         print(f'\t Test Loss: {test_loss:.3f} |  Val. Acc: {test_acc}%')
         print(f'\t grms: {grms}')
-        print(f'\t leakage: {leakage}')
-        print(f'\t current best grms till now: {current_best_grms} and test acc:  {test_acc_at_best_grms} and leakage {leakage_at_best_grms}')
+        print(f'\t hidden leakage: {hidden_leakage}')
+        print(f'\t logit leakage: {logits_leakage}')
+        print(f'\t current best grms till now: {current_best_grms} test acc: '
+              f' {test_acc_at_best_grms} hidden leakage: {hidden_leakage_at_best_grms}'
+              f' logit leakage: {logits_leakage_at_best_grms} ')
         if np.sum([abs(i) for i in grms]) < np.sum(
                 [abs(i) for i in current_best_grms]) and epoch > 0.5 * n_epochs and test_acc > 0.731:
             current_best_grms = grms
             test_acc_at_best_grms = test_acc
-            leakage_at_best_grms = leakage
+            hidden_leakage_at_best_grms = hidden_leakage
+            logits_leakage_at_best_grms = logits_leakage
             print(f'\t updated current best grms: {current_best_grms}')
 
         # print(enc_grad_norm)
