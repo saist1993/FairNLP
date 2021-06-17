@@ -759,6 +759,7 @@ def evaluate_adv(model, iterator, criterion, device, accuracy_calculation_functi
     is_regression = other_params['is_regression']
     is_post_hoc = other_params['is_post_hoc']
     all_preds = []
+    all_hidden = []
     y,s = [],[]
 
 
@@ -830,13 +831,27 @@ def evaluate_adv(model, iterator, criterion, device, accuracy_calculation_functi
 
 
 
-
 def generate_predictions(model, iterator, device):
     all_preds = []
     with torch.no_grad():
         for labels, text, lengths, aux in tqdm(iterator):
             text = text.to(device)
             predictions = model(text, lengths)
+            if len(predictions) == 2:
+                all_preds.append(predictions[0].argmax(1))
+            else:
+                all_preds.append(predictions.argmax(1))
+    # flattening all_preds
+    all_preds = torch.cat(all_preds, out=torch.Tensor(len(all_preds), all_preds[0].shape[0])).to(device)
+    return all_preds
+
+
+def generate_hidden_representation(model, iterator, device):
+    all_preds = []
+    with torch.no_grad():
+        for labels, text, lengths, aux in tqdm(iterator):
+            text = text.to(device)
+            predictions, original_hidden, hidden = model(text, lengths, return_hidden=True)
             if len(predictions) == 2:
                 all_preds.append(predictions[0].argmax(1))
             else:
@@ -1097,7 +1112,7 @@ def basic_training_loop(
             print(f'\t Test Loss: {test_loss:.3f} |  Val. Acc: {test_acc}%')
             print(f'\t grms: {grms}')
             print(f'\t current best grms till now: {current_best_grms} and test acc:  {test_acc_at_best_grms}')
-            if np.sum([abs(i) for i in grms]) < np.sum([abs(i) for i in current_best_grms]) and epoch > 0.5 * n_epochs and test_acc > 73.1:
+            if np.sum([abs(i) for i in grms]) < np.sum([abs(i) for i in current_best_grms]) and epoch > 0.5 * n_epochs and test_acc > 0.731:
                 current_best_grms = grms
                 test_acc_at_best_grms = test_acc
                 print(f'\t updated current best grms: {current_best_grms}')
@@ -1305,7 +1320,7 @@ def three_phase_training_loop(
         print(f'\t grms: {grms}')
         print(f'\t current best grms till now: {current_best_grms} and test acc:  {test_acc_at_best_grms}')
         if np.sum([abs(i) for i in grms]) < np.sum(
-                [abs(i) for i in current_best_grms]) and epoch > 0.5 * n_epochs and test_acc > 73.1:
+                [abs(i) for i in current_best_grms]) and epoch > 0.5 * n_epochs and test_acc > 0.731:
             current_best_grms = grms
             test_acc_at_best_grms = test_acc
             print(f'\t updated current best grms: {current_best_grms}')
