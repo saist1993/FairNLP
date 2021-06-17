@@ -858,14 +858,14 @@ def calculate_lekage(model, dev_iterator, test_iterator, device):
                 aux = aux.to(device)
                 predictions, adv_output, _,  hidden = model(text, lengths, return_hidden=True)
                 if len(predictions) == 2:
-                    all_hidden.append(hidden)
+                    all_hidden.append(hidden.detach().cpu())
                 else:
-                    all_hidden.append(hidden)
+                    all_hidden.append(hidden.detach().cpu())
                 s.append(aux)
 
         # flattening all_preds
         s = torch.cat(s, out=torch.Tensor(len(s), s[0].shape[0])).detach().cpu().numpy()
-        all_hidden = torch.cat(all_hidden, out=torch.Tensor(len(all_hidden), all_hidden[0].shape[0]))
+        all_hidden = torch.cat(all_hidden, out=torch.Tensor(len(all_hidden), all_hidden[0].shape[0])).detach().cpu().numpy()
         return all_hidden, s
 
     dev_preds, dev_aux = temp(model, dev_iterator, device)
