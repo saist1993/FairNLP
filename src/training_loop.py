@@ -855,6 +855,7 @@ def calculate_lekage(model, dev_iterator, test_iterator, device):
         with torch.no_grad():
             for labels, text, lengths, aux in tqdm(iterator):
                 text = text.to(device)
+                aux = aux.to(device)
                 predictions, adv_output, _,  hidden = model(text, lengths, return_hidden=True)
                 if len(predictions) == 2:
                     all_hidden.append(hidden)
@@ -1195,6 +1196,11 @@ def three_phase_training_loop(
         training_loop_type= other_params['training_loop_type']
     except KeyError:
         training_loop_type = 'three_phase'
+
+    try:
+        do_leakage_calculation = other_params['do_leakage_calculation']
+    except KeyError:
+        do_leakage_calculation = False
     assert is_adv == True
 
     current_scale = 0
