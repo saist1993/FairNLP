@@ -722,8 +722,8 @@ def train_adv_three_phase_custom(model, iterator, optimizer, criterion, device, 
                 loss_main = criterion(predictions.squeeze(), labels.squeeze())
                 loss_aux = criterion(aux_predictions.squeeze(), aux.squeeze())
             else:
-                loss_main = criterion(predictions, labels)
-                loss_aux = criterion(aux_predictions, aux)
+                loss_main = criterion(predictions.clamp(min=1e-4), labels)
+                loss_aux = criterion(aux_predictions.clamp(min=1e-4), aux)
 
             total_loss = loss_main + (loss_aux_scale*loss_aux)
 
@@ -847,6 +847,8 @@ def generate_predictions(model, iterator, device):
     return all_preds
 
 
+
+
 def calculate_lekage(model, dev_iterator, test_iterator, device):
 
     def temp(model, iterator, device):
@@ -858,6 +860,10 @@ def calculate_lekage(model, dev_iterator, test_iterator, device):
                 text = text.to(device)
                 aux = aux.to(device)
                 predictions, adv_output, _,  hidden = model(text, lengths, return_hidden=True)
+
+
+
+
                 if len(predictions) == 2:
                     all_hidden.append(hidden.detach().cpu())
                     all_prediction.append(predictions.detach().cpu())
@@ -865,6 +871,8 @@ def calculate_lekage(model, dev_iterator, test_iterator, device):
                     all_hidden.append(hidden.detach().cpu())
                     all_prediction.append(predictions.detach().cpu())
                 s.append(aux)
+
+
 
         # flattening all_preds
         s = torch.cat(s, out=torch.Tensor(len(s), s[0].shape[0])).detach().cpu().numpy()
@@ -876,6 +884,7 @@ def calculate_lekage(model, dev_iterator, test_iterator, device):
     test_preds, test_aux, test_logits = temp(model, test_iterator, device)
 
     biased_classifier = LinearSVC(fit_intercept=True, class_weight='balanced', dual=False, C=0.1, max_iter=10000)
+
     biased_classifier.fit(dev_preds, dev_aux)
     test_hidden_leakage = biased_classifier.score(test_preds, test_aux)
 
@@ -1287,7 +1296,7 @@ def three_phase_training_loop(
 
             print(f"in three phase custom: training loop type is {training_loop_type}")
 
-            leakage = calculate_lekage(model, dev_iterator, test_iterator, device)
+            # leakage = calculate_lekage(model, dev_iterator, test_iterator, device)
 
             train_loss_main, train_loss_aux, train_loss_total, train_acc_main, train_acc_aux = train_adv_three_phase_custom(
                 model,
@@ -1315,7 +1324,7 @@ def three_phase_training_loop(
                                                                                                              other_params)
 
             hidden_leakage, logits_leakage = calculate_lekage(model, dev_iterator, test_iterator, device)
-
+            # hidden_leakage, logits_leakage = 100.0, 100.0
 
         else:
             raise CustomError('The training loop type is incorrect.')
@@ -1358,7 +1367,7 @@ def three_phase_training_loop(
               f' {test_acc_at_best_grms} hidden leakage: {hidden_leakage_at_best_grms}'
               f' logit leakage: {logits_leakage_at_best_grms} ')
         if np.sum([abs(i) for i in grms]) < np.sum(
-                [abs(i) for i in current_best_grms]) and epoch > 0.5 * n_epochs and test_acc > 0.731:
+                [abs(i) for i in current_best_grms])  and test_acc > 0.842:   #0.731; epoch > 0.5 * n_epochs
             current_best_grms = grms
             test_acc_at_best_grms = test_acc
             hidden_leakage_at_best_grms = hidden_leakage

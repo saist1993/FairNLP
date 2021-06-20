@@ -3,7 +3,7 @@ import torch.nn as nn
 import torch.nn.functional as func
 
 from utils import GradReverse, laplace
-
+# torch.autograd.set_detect_anomaly(True)
 
 class CNN(nn.Module):
     def __init__(self, model_params):
@@ -496,10 +496,22 @@ class BiLSTMAdvWithFreeze(nn.Module):
     def forward(self, text, lengths, gradient_reversal=False, return_hidden=False):
         # text = [seq len, batch size]
         # lengths = [batch size]
-
+        #
+        # index = 0
+        # for i in text[:, 0]:
+        #     if not torch.isfinite(i):
+        #         print(index, i)
+        #         raise KeyError
+        #
+        # if not text.isfinite().any():
+        #     print(text)
+        #     raise KeyboardInterrupt
 
         original_hidden = self.embedder(text, lengths)
-
+        #
+        # if not original_hidden.isfinite().any():
+        #     print(text)
+        #     raise KeyboardInterrupt
         #
         # if gradient_reversal:
         #     adv_output = self.adv(GradReverse.apply(original_hidden))
@@ -526,6 +538,19 @@ class BiLSTMAdvWithFreeze(nn.Module):
             adv_output = self.adv(GradReverse.apply(hidden))
         else:
             adv_output = self.adv(hidden)
+
+        # if not hidden.isfinite().any():
+        #     print(text)
+        #     raise KeyboardInterrupt
+        #
+        # if not prediction.isfinite().any():
+        #     print(text)
+        #     raise KeyboardInterrupt
+        #
+        # if not adv_output.isfinite().any():
+        #     print(text)
+        #     raise KeyboardInterrupt
+
 
         if return_hidden:
             return prediction, adv_output, original_hidden, hidden
