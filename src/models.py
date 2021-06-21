@@ -520,6 +520,8 @@ class BiLSTMAdvWithFreeze(nn.Module):
 
 
 
+
+
         if self.noise_layer:
             m = torch.distributions.laplace.Laplace(torch.tensor([0.0]), torch.tensor([laplace(self.eps, 2)]))
             # max_hidden = torch.max(hidden, 1, keepdims=True)[0]
@@ -532,12 +534,16 @@ class BiLSTMAdvWithFreeze(nn.Module):
 
 
         # hidden = hidden/torch.norm(hidden, keepdim=True)
-
-        prediction = self.classifier(hidden)
         if gradient_reversal:
             adv_output = self.adv(GradReverse.apply(hidden))
         else:
             adv_output = self.adv(hidden)
+
+        prediction = self.classifier(hidden)
+        # if gradient_reversal:
+        #     adv_output = self.adv(GradReverse.apply(hidden))
+        # else:
+        #     adv_output = self.adv(hidden)
 
         # if not hidden.isfinite().any():
         #     print(text)

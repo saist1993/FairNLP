@@ -1367,7 +1367,7 @@ def three_phase_training_loop(
               f' {test_acc_at_best_grms} hidden leakage: {hidden_leakage_at_best_grms}'
               f' logit leakage: {logits_leakage_at_best_grms} ')
         if np.sum([abs(i) for i in grms]) < np.sum(
-                [abs(i) for i in current_best_grms])  and test_acc > 0.842:   #0.731; epoch > 0.5 * n_epochs
+                [abs(i) for i in current_best_grms])  and test_acc > 0.80:   #0.731 - encoded_emoji; epoch > 0.5 * n_epochs; 0.842 celeb; 0.80 adult
             current_best_grms = grms
             test_acc_at_best_grms = test_acc
             hidden_leakage_at_best_grms = hidden_leakage

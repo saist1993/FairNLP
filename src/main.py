@@ -32,7 +32,7 @@ from utils import clean_text as clean_text_function
 from utils import clean_text_tweet as clean_text_function_tweet
 from utils import equal_odds, demographic_parity, equal_opportunity
 from training_loop import basic_training_loop, three_phase_training_loop
-from utils import calculate_grms, calculate_demographic_parity, calculate_equal_opportunity, calculate_equal_odds, calculate_true_rates
+from utils import calculate_grms, calculate_demographic_parity, calculate_equal_opportunity, calculate_equal_odds, calculate_true_rates, calculate_ddp_dde
 from models import BiLSTM, initialize_parameters, BiLSTMAdv, BOWClassifier, Attacker, CNN, BiLSTMAdvWithFreeze, LinearLayers, LinearAdv
 
 import bias_in_bios_analysis
@@ -169,6 +169,7 @@ def get_pretrained_embedding(initial_embedding, pretrained_vectors, vocab, devic
 @click.option('-use_lr_schedule', '--use_lr_schedule', type=bool, default=True, help="if True: lr schedule is implemented. Note that this is only for simple trainign loop and not for three phase ones.")
 @click.option('-fairness_function', '--fairness_function', type=str, default='equal_odds', help="the fairness measure to implement while employing fairgrad.")
 @click.option('-fairness_score_function', '--fairness_score_function', type=str, default='grms', help="The fairness score function.")
+@click.option('-sample_specific_class', '--sample_specific_class', type=bool, default=False, help="samples only specific classes. Specified in create_data.BiasinBiosSimpleAdv class")
 
 
 def main(emb_dim:int,
@@ -219,7 +220,8 @@ def main(emb_dim:int,
          use_adv_dataset:bool,
          use_lr_schedule:bool,
          fairness_function:str,
-         fairness_score_function:str
+         fairness_score_function:str,
+         sample_specific_class:bool
          ):
 
     if is_adv:
@@ -273,7 +275,8 @@ def main(emb_dim:int,
         'is_regression': regression,
         'vocab': vocab,
         'use_adv_dataset': use_adv_dataset,
-        'trim_data': trim_data
+        'trim_data': trim_data,
+        'sample_specific_class': sample_specific_class
     }
     vocab, number_of_labels, train_iterator, dev_iterator, test_iterator, number_of_aux_labels = \
         generate_data_iterator(dataset_name=dataset_name, **iterator_params)
@@ -487,6 +490,8 @@ def main(emb_dim:int,
         fairness_score_function = calculate_equal_odds
     elif fairness_score_function.lower() == 'true_rates':
         fairness_score_function = calculate_true_rates
+    elif fairness_score_function.lower() == 'ddp_dde':
+        fairness_score_function = calculate_ddp_dde
     else:
         print("following type are supported: grms, equal_odds, demographic_parity, equal_opportunity")
         raise NotImplementedError

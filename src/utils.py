@@ -579,81 +579,54 @@ def custom_equal_odds(preds, y, s, device, total_no_main_classes, total_no_aux_c
 
     return group_fairness, fairness_lookup
 
-potential_stop_word_list = [
-    ['uh', ','],
-    [',', 'uh'],
-    ['you', 'know'],
-    ['you', 'know', ','],
-    ['Yeah', '.'],
-    ['.', 'Yeah'],
-    ['Yeah', ','],
-    ['Uh', ','],
-    ['Uh-huh'],
-    ['the', ',']
-]
 
-potential_stop_word_list = [" ".join(k) for k in potential_stop_word_list]
+def calculate_ddp_dde(preds, y, s, other_params):
+    positive_rate_prot = get_positive_rate(preds[s == 0], y[s == 0])
+    positive_rate_unprot = get_positive_rate(preds[s == 1], y[s == 1])
+    true_positive_rate_prot = get_true_positive_rate(preds[s == 0], y[s == 0])
+    true_positive_rate_unprot = get_true_positive_rate(preds[s == 1], y[s == 1])
+    DDP = positive_rate_unprot - positive_rate_prot
+    DEO = true_positive_rate_unprot - true_positive_rate_prot
+
+    return [DDP, DEO], ((abs(DDP)+abs(DEO))/2.0)
 
 
-def format_input(tokens):
-    sentence_string = " ".join(tokens)
-    #     sentence_string = "".join(sentence).lower()
-    flag = True
-    current_string = ""
-    while flag:
-        for p in potential_stop_word_list:
-            sentence_string = sentence_string.replace(p.lower(), " ")
+def get_positive_rate(y_predicted, y_true):
+    """Compute the positive rate for given predictions of the class label.
+    Parameters
+    ----------
+    y_predicted: numpy array
+        The predicted class labels of shape=(number_points,).
+    y_true: numpy array
+        The true class labels of shape=(number_points,).
+    Returns
+    ---------
+    pr: float
+        The positive rate.
+    """
+    tn, fp, fn, tp = confusion_matrix(y_true, y_predicted).ravel()
+    pr = (tp+fp) / (tp+fp+tn+fn)
+    return pr
 
-            sentence_string = sentence_string.replace(', ,', ' , ')
-            sentence_string = sentence_string.replace(', .', ' . ')
-            sentence_string = sentence_string.replace('. ,', ' . ')
-            sentence_string = re.sub("\s\s+", " ", sentence_string)
-
-            split_string = sentence_string.split(" ")
-            repetative_words = []  # patter word , word
-            print(sentence_string)
-
-            for index, word in enumerate(split_string):
-                try:
-                    next_word = split_string[min(len(split_string) - 1, index + 2)]
-                    between_word = split_string[min(len(split_string) - 1, index + 1)]
-                except IndexError:
-                    print(min(len(split_string), index + 2), len(split_string))
-                if next_word == word and word not in  [''] :
-                    repetative_words.append([f'{word} {between_word} {word}', word])
-
-                try:
-                    next_word = split_string[min(len(split_string) - 1, index + 1)]
-                    next_next_word = split_string[min(len(split_string) - 1, index + 3)]
-                    next_next_next_word = split_string[min(len(split_string) - 1, index + 4)]
-                except IndexError:
-                    print(min(len(split_string), index + 2), len(split_string))
-                if next_next_word == word and next_word == next_next_next_word and word not in  ['']:
-                    repetative_words.append([f'{word} {next_word} , {word} {next_word}', f'{word} {next_word}'])
-            print(repetative_words)
-            for w_pattern, w_replace in repetative_words:
-                sentence_string = sentence_string.replace(w_pattern, w_replace)
-
-        if current_string == sentence_string:
-            flag = False
-        else:
-            current_string = sentence_string
-
-    return sentence_string.strip()
+def get_true_positive_rate(y_predicted, y_true):
+    """Compute the true positive rate for given predictions of the class label.
+    Parameters
+    ----------
+    y_predicted: numpy array
+        The predicted class labels of shape=(number_points,).
+    y_true: numpy array
+        The true class labels of shape=(number_points,).
+    Returns
+    ---------
+    tpr: float
+        The true positive rate.
+    """
+    tn, fp, fn, tp = confusion_matrix(y_true, y_predicted).ravel()
+    tpr = tp / (tp+fn)
+    return tpr
 
 if __name__ == '__main__':
-    # a = format_input(['I',
-    #               'have',
-    #               ',',
-    #               'am',
-    #               ',',
-    #               'I',
-    #               'disco',
-    #               'dancer',
-    #               'uh',
-    #               ','])
 
-    a = format_input(['to', 'be', 'a', 'surrogate', 'parent', 'for', 'parent', 'for'])
 
 
     print(a)
