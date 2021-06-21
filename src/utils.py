@@ -501,7 +501,7 @@ def calculate_grms(preds, y, s, other_params=None):
         gender_1, gender_2 = temp[0], temp[1]
         scores.append((gender_1-gender_2)**2)
 
-    return np.sqrt(np.mean(scores)), group_fairness
+    return [np.sqrt(np.mean(scores))], group_fairness
 
 
 def calculate_true_rates(preds, y, s, other_params):
