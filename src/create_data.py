@@ -408,8 +408,8 @@ class BiasinBiosSimpleAdv(WikiSimpleClassification):
     def __init__(self, dataset_name: str, **params):
         super().__init__(dataset_name, **params)
         self.data_dir = Path('../data/bias_in_bios/') # don't really need it. The path is hard-coded
-        self.sample_specific_class = False
-        self.classes_to_sample = ['professor']
+        self.sample_specific_class = params['sample_specific_class']
+        self.classes_to_sample = ['physician', 'attorney']
         # List of all professions:
         '''
         ['architect', 'dietitian', 'surgeon', 'software_engineer', 'journalist', 'interior_designer', 
