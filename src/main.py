@@ -90,6 +90,11 @@ def generate_data_iterator(dataset_name:str, **kwargs):
     elif dataset_name.lower() == 'encoded_emoji':
         dataset_creator = create_data.EncodedEmoji(dataset_name=dataset_name, **kwargs)
         vocab, number_of_labels, train_iterator, dev_iterator, test_iterator, number_of_aux_labels = dataset_creator.run()
+
+    elif dataset_name.lower() in "_".join(['blog']):
+        dataset_creator = create_data.EncodedDpNLP(dataset_name=dataset_name, **kwargs)
+        vocab, number_of_labels, train_iterator, dev_iterator, test_iterator, number_of_aux_labels = dataset_creator.run()
+
     else:
         raise CustomError("No such dataset")
 
@@ -170,8 +175,6 @@ def get_pretrained_embedding(initial_embedding, pretrained_vectors, vocab, devic
 @click.option('-fairness_function', '--fairness_function', type=str, default='equal_odds', help="the fairness measure to implement while employing fairgrad.")
 @click.option('-fairness_score_function', '--fairness_score_function', type=str, default='grms', help="The fairness score function.")
 @click.option('-sample_specific_class', '--sample_specific_class', type=bool, default=False, help="samples only specific classes. Specified in create_data.BiasinBiosSimpleAdv class")
-
-
 def main(emb_dim:int,
          spacy_model:str,
          seed:int,

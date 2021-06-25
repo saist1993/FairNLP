@@ -36,7 +36,9 @@ def get_celeb_data(load_data_size=None):
 
     s = -1 * df['sex']
     y = df['Smiling']
+    # y = df['Attractive']
     df = df.drop(columns=['sex', 'Smiling', 'picture_ID'])
+    # df = df.drop(columns=['sex', 'Attractive', 'picture_ID'])
 
     X = df.to_numpy()
     y = y.to_numpy()
@@ -820,6 +822,11 @@ def normalize(x):
     # scale to [-1, 1]
     x_ = (x - x.min()) / (x.max() - x.min()) * 2 - 1
     return x_
+
+
+
+
+
 
 
 if __name__ == '__main__':

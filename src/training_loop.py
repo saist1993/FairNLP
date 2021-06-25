@@ -1239,8 +1239,11 @@ def three_phase_training_loop(
             return current_lr
 
 
+    if not only_perturbate:
+        total_epochs_in_perturbation = float(int(n_epochs * .60) - int(n_epochs * .30))
+    else:
+        total_epochs_in_perturbation = n_epochs
 
-    total_epochs_in_perturbation = float(int(n_epochs * .60) - int(n_epochs * .30))
     original_loss_aux_scale = other_params['loss_aux_scale']
 
     def get_current_scale(epoch_number, perturbate_epoch_number, last_scale):
@@ -1262,6 +1265,15 @@ def three_phase_training_loop(
 
         if only_perturbate:
             phase = 'perturbate'
+            perturbate_epoch_number = perturbate_epoch_number + 1
+            current_scale = get_current_scale(epoch_number=epoch, perturbate_epoch_number=perturbate_epoch_number,
+                                              last_scale=current_scale)
+            current_lr = get_lr(current_lr, perturbate_epoch_number=perturbate_epoch_number)
+            print(f"epoch: {epoch}: {current_scale}")
+            other_params['encoder_lr'] = current_lr
+            other_params['classifier_lr'] = current_lr
+            other_params['adversary_lr'] = current_lr
+            other_params['loss_aux_scale'] = current_scale
         else:
             if epoch < int(n_epochs*.30):
                 phase = 'initial'
@@ -1367,7 +1379,7 @@ def three_phase_training_loop(
               f' {test_acc_at_best_grms} hidden leakage: {hidden_leakage_at_best_grms}'
               f' logit leakage: {logits_leakage_at_best_grms} ')
         if np.sum([abs(i) for i in grms]) < np.sum(
-                [abs(i) for i in current_best_grms])  and test_acc > 0.80:   #0.731 - encoded_emoji; epoch > 0.5 * n_epochs; 0.842 celeb; 0.80 adult
+                [abs(i) for i in current_best_grms])  and test_acc > 0.94:   #0.731 - encoded_emoji; epoch > 0.5 * n_epochs; 0.842 celeb; 0.80 adult; 94 blog
             current_best_grms = grms
             test_acc_at_best_grms = test_acc
             hidden_leakage_at_best_grms = hidden_leakage
