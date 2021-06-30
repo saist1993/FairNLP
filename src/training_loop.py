@@ -11,6 +11,13 @@ from models import initialize_parameters
 # custom imports
 from utils import CustomError, get_enc_grad_norm
 
+
+import logging
+import sys
+logging.basicConfig(stream=sys.stdout, level=logging.DEBUG)
+
+
+
 def epoch_time(start_time, end_time):
     elapsed_time = end_time - start_time
     elapsed_mins = int(elapsed_time / 60)
@@ -1388,6 +1395,7 @@ def three_phase_training_loop(
         print(f'\t hidden leakage: {hidden_leakage}')
         print(f'\t logit leakage: {logits_leakage}')
         print(f'****grms:{grms}****val_acc:{valid_acc}****test_acc:{test_acc}')
+        logging.debug(f'****grms:{grms}****val_acc:{valid_acc}****test_acc:{test_acc}')
         print(f'\t current best grms till now: {current_best_grms} test acc: '
               f' {test_acc_at_best_grms} hidden leakage: {hidden_leakage_at_best_grms}'
               f' logit leakage: {logits_leakage_at_best_grms} ')
