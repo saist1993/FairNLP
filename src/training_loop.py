@@ -1196,6 +1196,15 @@ def three_phase_training_loop(
     test_acc_at_best_grms = 0.0
     hidden_leakage_at_best_grms, logits_leakage_at_best_grms = 100, 100
 
+    # try:
+    #     use_lr_schedule = other_params['use_lr_schedule']
+    # except KeyError:
+    #     use_lr_schedule = False
+    # try:
+    #     lr_scheduler = other_params['lr_scheduler']
+    # except KeyError:
+    #     lr_scheduler = None
+
     try:
         is_post_hoc = other_params['is_post_hoc']
     except KeyError:
@@ -1346,6 +1355,9 @@ def three_phase_training_loop(
 
         end_time = time.monotonic()
 
+        # if use_lr_schedule:
+        #     lr_scheduler.step(valid_loss)
+
         epoch_mins, epoch_secs = epoch_time(start_time, end_time)
 
 
@@ -1375,6 +1387,7 @@ def three_phase_training_loop(
         print(f'\t grms: {grms}')
         print(f'\t hidden leakage: {hidden_leakage}')
         print(f'\t logit leakage: {logits_leakage}')
+        print(f'****grms:{grms}****val_acc:{valid_acc}****test_acc:{test_acc}')
         print(f'\t current best grms till now: {current_best_grms} test acc: '
               f' {test_acc_at_best_grms} hidden leakage: {hidden_leakage_at_best_grms}'
               f' logit leakage: {logits_leakage_at_best_grms} ')
