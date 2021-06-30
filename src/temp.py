@@ -23,8 +23,9 @@ if __name__ == '__main__':
  # epss = [8.0,20.0]
 # epss = [25.0, 50.0, 100.0, 500.0, 1000.0]
 epss = [1.0]
-# adv_scales = [round(i,2) for i in np.arange(0.1,0.3,0.1)]
-adv_scales = [1.0]
+adv_scales = [round(i,2) for i in np.arange(0.1,1.3,0.1)]
+# adv_scales = [round(i,2) for i in np.arange(1.3,2.6,0.1)]
+# adv_scales = [1.0]
 # mode_of_loss_scales = ['exp', 'constant']
 mode_of_loss_scales = ['exp']
 
