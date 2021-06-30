@@ -504,6 +504,43 @@ def calculate_grms(preds, y, s, other_params=None):
     return [np.sqrt(np.mean(scores))], group_fairness
 
 
+def calculate_acc_diff(preds, y, s, other_params=None):
+    # unique_classes = torch.sort(torch.unique(y))[0]  # For example: [doctor, nurse, engineer]
+    all_acc= []
+    main_acc = torch.mean((preds == y).float())
+    all_acc.append(main_acc)
+
+    unique_groups = torch.sort(torch.unique(s))[0]  # For example: [Male, Female]
+    group_fairness = {}  # a dict which keeps a track on how fairness is changing
+
+    '''
+    it will have a structure of 
+    {
+        'doctor': {
+            'm' : 0.5, 
+            'f' : 0.6
+            }, 
+        'model': {
+        'm': 0.5,
+        'f': 0.7,
+        }
+    '''
+    # for uc in unique_classes:  # iterating over each class say: uc=doctor for the first iteration
+    #     group_fairness[uc] = {}
+    #     positive_rate = torch.mean((preds[y == uc] == uc).float())  # prob(pred=doctor/y=doctor)
+    for group in unique_groups:  # iterating over each group say: group=male for the firt iteration
+        mask_pos = s == group  # find instances with y=doctor and s=male
+        acc_class = torch.mean((preds[mask_pos] == y[mask_pos]).float())
+        temp = acc_class.item()
+        if math.isnan(temp):
+            temp = 0.0
+        all_acc.append(temp)
+
+    scores = abs(all_acc[1] - all_acc[2])
+    assert len(all_acc) == 3 # there are just two groups.
+
+    return [scores], all_acc
+
 def calculate_true_rates(preds, y, s, other_params):
     '''
     inspired from https://github.com/HanXudong/Diverse_Adversaries_for_Mitigating_Bias_in_Training/blob/b5b4c99ada17b3c19ab2ae8789bb56058cb72643/networks/eval_metrices.py#L14

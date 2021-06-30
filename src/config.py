@@ -1,6 +1,6 @@
 BILSTM_PARAMS = {
     'name': 'simple',
-    'hidden_dim': 256,
+    'hidden_dim': 64,      # 256
     'dropout': 0.0,
     'n_layers': 2,
     'adv_number_of_layers': 2,
