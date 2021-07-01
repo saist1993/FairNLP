@@ -1,3 +1,4 @@
+import argparse
 import numpy as np
 from main import main
 
@@ -9,6 +10,15 @@ from main import main
 # -training_loop_type three_phase_custom -trim_data True -eps 15.0 -eps_scale constant -optimizer sgd -lr 0.02
 # -fair_grad False -use_adv_dataset True -bs 64 -fairness_function demographic_parity -fairness_score_function grms -noise_layer False -sample_specific_class True -only_perturbate True
 if __name__ == '__main__':
+    parser = argparse.ArgumentParser(description='Process some data')
+    parser.add_argument('first', metavar='N', type=float,
+                        help='an integer for the accumulator')
+    parser.add_argument('second', metavar='N', type=float,
+                        help='an integer for the accumulator')
+    args = parser.parse_args()
+    print(args.first)
+    print(args.second)
+
     adv_scale = 1.0
     noise_layer = False
     eps = 10.0
@@ -20,12 +30,14 @@ if __name__ == '__main__':
     epochs = 15
     is_adv = True
 
+    assert args.second > args.first
+
  # epss = [8.0,20.0]
 # epss = [25.0, 50.0, 100.0, 500.0, 1000.0]
 epss = [1.0]
 # adv_scales = [round(i,2) for i in np.arange(0.1,0.5,0.1)]
 # adv_scales = [round(i,2) for i in np.arange(0.5,1.0,0.1)]
-adv_scales = [round(i,2) for i in np.arange(1.0,2.0,0.1)]
+adv_scales = [round(i,2) for i in np.arange(args.first,args.second,0.1)]
 # adv_scales = [round(i,2) for i in np.arange(1.5,2.0,0.1)]
 # adv_scales = [round(i,2) for i in np.arange(2.0,2.6,0.1)]
 # adv_scales = [1.0]
