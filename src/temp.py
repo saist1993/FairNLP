@@ -20,21 +20,21 @@ if __name__ == '__main__':
     print(args.second)
 
     adv_scale = 1.0
-    noise_layer = False
+    noise_layer = True
     eps = 10.0
     bs = 64
     only_perturbate = True
     mode_of_loss_scale = 'exp'
     optimizer = 'sgd'
     lrs = [0.02, 0.01]
-    epochs = 15
+    epochs = 60
     is_adv = True
 
     assert args.second > args.first
 
- # epss = [8.0,20.0]
+epss = [8.0,10.0]
 # epss = [25.0, 50.0, 100.0, 500.0, 1000.0]
-epss = [1.0]
+# epss = [1.0]
 # adv_scales = [round(i,2) for i in np.arange(0.1,0.5,0.1)]
 # adv_scales = [round(i,2) for i in np.arange(0.5,1.0,0.1)]
 adv_scales = [round(i,2) for i in np.arange(args.first,args.second,0.1)]
