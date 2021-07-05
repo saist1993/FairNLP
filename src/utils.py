@@ -617,6 +617,9 @@ def custom_equal_odds(preds, y, s, device, total_no_main_classes, total_no_aux_c
 
 
 def calculate_ddp_dde(preds, y, s, other_params):
+    preds = preds.detach().cpu().numpy()
+    y = y.detach().cpu().numpy()
+    s = s.detach().cpu().numpy()
     positive_rate_prot = get_positive_rate(preds[s == 0], y[s == 0])
     positive_rate_unprot = get_positive_rate(preds[s == 1], y[s == 1])
     true_positive_rate_prot = get_true_positive_rate(preds[s == 0], y[s == 0])
