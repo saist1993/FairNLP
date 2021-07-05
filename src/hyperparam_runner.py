@@ -75,7 +75,7 @@ if __name__ == '__main__':
     only_perturbate = True
     mode_of_loss_scale = 'exp'
     optimizer = 'sgd'
-    lrs = [0.02 , 0.01]
+    lrs = [0.01 , 0.02]
 
     if is_adv:
         adv_scales = [round(i,2) for i in np.arange(args.adv_start,args.adv_end,0.1)]
@@ -123,7 +123,7 @@ if __name__ == '__main__':
                          is_post_hoc=False,
                          train_main_model=True,
                          use_wandb=False,
-                         config_dict="simple",
+                         config_dict=config_dict,
                          experiment_name="hyper-param-search",
                          only_perturbate=only_perturbate,
                          mode_of_loss_scale=mode_of_loss_scale,
