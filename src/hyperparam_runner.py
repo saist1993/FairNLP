@@ -9,19 +9,28 @@ from pathlib import Path
 
 create_dir = lambda dir_location: Path(dir_location).mkdir(parents=True, exist_ok=True)
 
+def str2bool(v):
+    if isinstance(v, bool):
+        return v
+    if v.lower() in ('yes', 'true', 't', 'y', '1'):
+        return True
+    elif v.lower() in ('no', 'false', 'f', 'n', '0'):
+        return False
+    else:
+        raise argparse.ArgumentTypeError('Boolean value expected.')
 
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--log_name', '-name', help="log file name", type=str)
     parser.add_argument('--dataset_name', '-dataset', help="name of the dataset", type=str)
-    parser.add_argument('--noise_layer', '-noise_layer', help="True for using noise; else false (default).", type=bool)
+    parser.add_argument('--noise_layer', '-noise_layer', help="True for using noise; else false (default).", type=str)
     # parser.add_argument('--eps', '-eps', help="[0.1, 0.2, 2.0, 2.4]", type=str)
 
-    parser.add_argument('--eps_list', '-eps_list', nargs="*", help="--eps_list 0.1, 0.2, 2.0, 2.4", type=float)
+    parser.add_argument('--eps_list', '-eps_list', nargs="*", help="--eps_list 0.1, 0.2, 2.0, 2.4", type=str)
 
 
-    parser.add_argument('--is_adv', '-is_adv', help="True for using adv; else false (default).", type=bool)
+    parser.add_argument('--is_adv', '-is_adv', help="True for using adv; else false (default).", type=str)
     parser.add_argument('--adv_start', '-adv_s', help="start of adv scale for increment increase for ex: 0.1", type=float)
     parser.add_argument('--adv_end', '-adv_e', help="end of adv scale 1.0", type=float)
     parser.add_argument('--epochs', '-epochs', help="epochs!", type=int)
@@ -69,8 +78,8 @@ if __name__ == '__main__':
     # setting up the run
     epochs = args.epochs
     dataset_name = args.dataset_name
-    noise_layer = args.noise_layer
-    is_adv = args.is_adv
+    noise_layer = str2bool(args.noise_layer)
+    is_adv = str2bool(args.is_adv)
     bs = 64
     only_perturbate = True
     mode_of_loss_scale = 'exp'
