@@ -574,7 +574,6 @@ def calculate_true_rates(preds, y, s, other_params):
     return [TPR_gap,TNR_gap], ((abs(TPR_gap)+abs(TNR_gap))/2.0)
 
 
-
 def custom_equal_odds(preds, y, s, device, total_no_main_classes, total_no_aux_classes, epsilon=0.0):
     """
 
@@ -661,6 +660,29 @@ def get_true_positive_rate(y_predicted, y_true):
     tn, fp, fn, tp = confusion_matrix(y_true, y_predicted).ravel()
     tpr = tp / (tp+fn)
     return tpr
+
+
+def calculate_multiple_things(preds, y, s, other_params):
+    """
+    do something here. Find ones which are useful and bunch them together to form easy dict
+    """
+    grms_score, grms_group_fairness = calculate_grms(preds, y, s, other_params)
+    acc_diff_scores, acc_diff_all_acc = calculate_acc_diff(preds, y, s, other_params)
+    [ddp,deo], _ = calculate_ddp_dde(preds, y, s, other_params)
+    [tpr_gap, tnr_gap], avg_tpr_tnr = calculate_true_rates(preds, y, s, other_params)
+
+    scores = {
+        'grms': grms_score,
+        'acc_diff': acc_diff_scores,
+        'ddp': ddp,
+        'deo': deo,
+        'tpr_gap': tpr_gap,
+        'tnr_gap': tnr_gap,
+        'avg_tpr_tnr': avg_tpr_tnr
+    }
+
+    return grms_score, scores
+
 
 if __name__ == '__main__':
 

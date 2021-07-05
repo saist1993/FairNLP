@@ -14,7 +14,7 @@ from utils import CustomError, get_enc_grad_norm
 
 import logging
 import sys
-logging.basicConfig(stream=sys.stdout, level=logging.DEBUG)
+logger = logging.getLogger(__name__)
 
 
 
@@ -833,7 +833,7 @@ def evaluate_adv(model, iterator, criterion, device, accuracy_calculation_functi
         else:
             grms = 0.0
 
-    return np.mean(epoch_total_loss ), np.mean(epoch_loss_main), np.mean(epoch_acc_main), np.mean(epoch_loss_aux), np.mean(epoch_acc_aux), grms
+    return np.mean(epoch_total_loss ), np.mean(epoch_loss_main), np.mean(epoch_acc_main), np.mean(epoch_loss_aux), np.mean(epoch_acc_aux), grms, group_fairness
 
 
 
@@ -1334,25 +1334,60 @@ def three_phase_training_loop(
                 accuracy_calculation_function,
                 phase, other_params)
 
+            logging.info("start of block - three_phase_adv_block")
 
 
-            valid_total_loss, valid_loss_main, valid_acc_main, valid_loss_aux, valid_acc_aux, grms = evaluate_adv(model,
+            valid_total_loss, valid_loss_main, valid_acc_main, valid_loss_aux, valid_acc_aux, grms, group_fairness = evaluate_adv(model,
                                                                                                                   dev_iterator,
                                                                                                                   criterion,
                                                                                                                   device,
                                                                                                                   accuracy_calculation_function,
                                                                                                                   other_params)
 
+            val_log = {
+                'valid_total_loss': valid_total_loss,
+                'valid_loss_main': valid_loss_main,
+                'valid_acc_main': valid_acc_main,
+                'valid_loss_aux': valid_loss_aux,
+                'valid_acc_aux': valid_acc_aux,
+                'score': grms,
+                'group_fairness': group_fairness
+            }
 
-            test_total_loss, test_loss_main, test_acc_main, test_loss_aux, test_acc_aux, grms = evaluate_adv(model,
+            logger.info(f"valid dict: {val_log}")
+
+
+            test_total_loss, test_loss_main, test_acc_main, test_loss_aux, test_acc_aux, grms, group_fairness = evaluate_adv(model,
                                                                                                              test_iterator,
                                                                                                              criterion,
                                                                                                              device,
                                                                                                              accuracy_calculation_function,
                                                                                                              other_params)
 
+            test_log = {
+                'test_total_loss': test_total_loss,
+                'test_loss_main': test_loss_main,
+                'test_acc_main': test_acc_main,
+                'test_loss_aux': test_loss_aux,
+                'test_acc_aux': test_acc_aux,
+                'score': grms,
+                'group_fairness': group_fairness
+            }
+
+            logger.info(f"test dict: {test_log}")
+
             hidden_leakage, logits_leakage = calculate_lekage(model, dev_iterator, test_iterator, device)
             # hidden_leakage, logits_leakage = 100.0, 100.0
+
+            attacker_data = {
+                'hidden_leakage': hidden_leakage,
+                'logits_leakage': logits_leakage
+            }
+
+            logger.info(f"attacker data: {attacker_data}")
+
+
+            logging.info("end of block - three_phase_adv_block")
 
         else:
             raise CustomError('The training loop type is incorrect.')
@@ -1395,7 +1430,7 @@ def three_phase_training_loop(
         print(f'\t hidden leakage: {hidden_leakage}')
         print(f'\t logit leakage: {logits_leakage}')
         print(f'****grms:{grms}****val_acc:{valid_acc}****test_acc:{test_acc}')
-        logging.debug(f'****grms:{grms}****val_acc:{valid_acc}****test_acc:{test_acc}')
+        # logger.info(f'****grms:{grms}****val_acc:{valid_acc}****test_acc:{test_acc}')
         print(f'\t current best grms till now: {current_best_grms} test acc: '
               f' {test_acc_at_best_grms} hidden leakage: {hidden_leakage_at_best_grms}'
               f' logit leakage: {logits_leakage_at_best_grms} ')

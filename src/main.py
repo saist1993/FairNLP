@@ -17,6 +17,8 @@ import gensim
 import pickle
 import numpy as np
 from pathlib import Path
+import logging
+import inspect
 from tqdm.auto import tqdm
 from functools import partial
 from mytorch.utils.goodies import *
@@ -32,10 +34,15 @@ from utils import clean_text as clean_text_function
 from utils import clean_text_tweet as clean_text_function_tweet
 from utils import equal_odds, demographic_parity, equal_opportunity
 from training_loop import basic_training_loop, three_phase_training_loop
-from utils import calculate_grms, calculate_demographic_parity, calculate_equal_opportunity, calculate_equal_odds, calculate_true_rates, calculate_ddp_dde, calculate_acc_diff
+from utils import calculate_grms, calculate_demographic_parity, calculate_equal_opportunity, \
+    calculate_equal_odds, calculate_true_rates, calculate_ddp_dde, calculate_acc_diff, calculate_multiple_things
 from models import BiLSTM, initialize_parameters, BiLSTMAdv, BOWClassifier, Attacker, CNN, BiLSTMAdvWithFreeze, LinearLayers, LinearAdv
 
 import bias_in_bios_analysis
+
+logger = logging.getLogger(__name__)
+
+
 
 def calculate_accuracy_classification(predictions, labels):
     top_predictions = predictions.argmax(1, keepdim = True)
@@ -338,6 +345,8 @@ def main(emb_dim:int,
     else:
         wandb = False
 
+    logger.info(f"arguemnts: {locals()}")
+
 
     if config_dict == 'simple':
         BILSTM_PARAMS = config.BILSTM_PARAMS
@@ -347,8 +356,11 @@ def main(emb_dim:int,
         BILSTM_PARAMS = config.BILSTM_PARAMS_CONFIG4
     elif config_dict == 'five_layer':
         BILSTM_PARAMS = config.BILSTM_PARAMS_CONFIG5
+    elif config_dict == 'simpler':
+        BILSTM_PARAMS= config.BILSTM_PARAMS_SIMPLER
     else:
         raise CustomError("no config file selected")
+
     print(f"seed is {seed}")
     torch.manual_seed(seed)
     torch.cuda.manual_seed(seed)
@@ -600,6 +612,8 @@ def main(emb_dim:int,
         fairness_score_function = calculate_ddp_dde
     elif fairness_score_function.lower() == 'acc_diff':
         fairness_score_function = calculate_acc_diff
+    elif fairness_score_function.lower() == 'multiple_things':
+        fairness_score_function = calculate_multiple_things
     else:
         print("following type are supported: grms, equal_odds, demographic_parity, equal_opportunity")
         raise NotImplementedError

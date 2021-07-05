@@ -229,8 +229,8 @@ class LinearLayers(nn.Module):
         length = None # it is a dummy input only meant for legacy
         for index, layer in enumerate(self.fc_layers):
             if len(self.fc_layers)-1 != index:
-                # x = func.relu(self.dropout(layer(x)))
-                x = func.relu(layer(x))
+                x = func.relu(self.dropout(layer(x)))
+                # x = func.relu(layer(x))
             else:
                 x = layer(x)
         return x
