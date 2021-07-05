@@ -108,7 +108,7 @@ if __name__ == '__main__':
                          model='linear_adv',
                          regression=False,
                          tokenizer_type='simple',
-                         use_clean_text=False,
+                         use_clean_text=True,
                          max_length=None,
                          epochs=epochs,
                          learnable_embeddings=False,
