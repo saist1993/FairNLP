@@ -27,7 +27,7 @@ if __name__ == '__main__':
     parser.add_argument('--noise_layer', '-noise_layer', help="True for using noise; else false (default).", type=str)
     # parser.add_argument('--eps', '-eps', help="[0.1, 0.2, 2.0, 2.4]", type=str)
 
-    parser.add_argument('--eps_list', '-eps_list', nargs="*", help="--eps_list 0.1, 0.2, 2.0, 2.4", type=str)
+    parser.add_argument('--eps_list', '-eps_list', nargs="*", help="--eps_list 0.1, 0.2, 2.0, 2.4", type=float)
 
 
     parser.add_argument('--is_adv', '-is_adv', help="True for using adv; else false (default).", type=str)
