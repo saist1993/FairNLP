@@ -84,7 +84,10 @@ if __name__ == '__main__':
     only_perturbate = True
     mode_of_loss_scale = 'exp'
     optimizer = 'sgd'
-    lrs = [0.01 , 0.02]
+    if noise_layer:
+        lrs = [0.02]
+    else:
+        lrs = [0.01 , 0.02]
 
     if is_adv:
         adv_scales = [round(i,2) for i in np.arange(args.adv_start,args.adv_end,0.1)]
@@ -97,6 +100,10 @@ if __name__ == '__main__':
     else:
         epss = [0.0]
 
+    if dataset_name == 'blog':
+        fairness_score_function = 'calculate_multiple_things_blog'
+    else:
+        fairness_score_function = 'multiple_things'
     # log stuff if need be here
 
     for eps in epss:
@@ -153,7 +160,7 @@ if __name__ == '__main__':
                          use_adv_dataset=True,
                          use_lr_schedule=True,
                          fairness_function='demographic_parity',
-                         fairness_score_function='multiple_things',
+                         fairness_score_function=fairness_score_function,
                          sample_specific_class=False
                          )
                     logger.info(f"end of run - {unique_id}")

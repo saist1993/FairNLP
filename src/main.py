@@ -35,7 +35,7 @@ from utils import clean_text_tweet as clean_text_function_tweet
 from utils import equal_odds, demographic_parity, equal_opportunity
 from training_loop import basic_training_loop, three_phase_training_loop
 from utils import calculate_grms, calculate_demographic_parity, calculate_equal_opportunity, \
-    calculate_equal_odds, calculate_true_rates, calculate_ddp_dde, calculate_acc_diff, calculate_multiple_things
+    calculate_equal_odds, calculate_true_rates, calculate_ddp_dde, calculate_acc_diff, calculate_multiple_things, calculate_multiple_things_blog
 from models import BiLSTM, initialize_parameters, BiLSTMAdv, BOWClassifier, Attacker, CNN, BiLSTMAdvWithFreeze, LinearLayers, LinearAdv
 
 import bias_in_bios_analysis
@@ -614,6 +614,8 @@ def main(emb_dim:int,
         fairness_score_function = calculate_acc_diff
     elif fairness_score_function.lower() == 'multiple_things':
         fairness_score_function = calculate_multiple_things
+    elif fairness_score_function.lower() == 'calculate_multiple_things_blog':
+        fairness_score_function = calculate_multiple_things_blog
     else:
         print("following type are supported: grms, equal_odds, demographic_parity, equal_opportunity")
         raise NotImplementedError

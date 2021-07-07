@@ -98,6 +98,8 @@ def evaluate(model, iterator, criterion, device, accuracy_calculation_function, 
     y,s = [],[]
     is_grms = False
     grms = 0.0
+    group_fairness = {}
+
 
     with torch.no_grad():
         for items in tqdm(iterator):
@@ -149,7 +151,7 @@ def evaluate(model, iterator, criterion, device, accuracy_calculation_function, 
         }
         grms, group_fairness = fairness_score_function(all_preds, y, s, scoring_function_params)
 
-    return epoch_loss / len(iterator), epoch_acc / len(iterator), grms
+    return epoch_loss / len(iterator), epoch_acc / len(iterator), grms, group_fairness
 
 
 def train_adv(model, iterator, optimizer, criterion, device, accuracy_calculation_function, other_params):
@@ -220,8 +222,6 @@ def train_adv(model, iterator, optimizer, criterion, device, accuracy_calculatio
         epoch_total_loss.append(total_loss.item())
 
     return np.mean(epoch_total_loss), np.mean(epoch_loss_main), np.mean(epoch_acc_main), np.mean(epoch_loss_aux), np.mean(epoch_acc_aux)
-
-
 
 
 def iter_all_strings():
@@ -555,9 +555,6 @@ def train_adv_three_phase(model, iterator, optimizer, criterion, device, accurac
 
 
 
-
-
-
 def train_adv_three_phase_custom(model, iterator, optimizer, criterion, device, accuracy_calculation_function, phase, other_params):
     print("using a three phase custom training loop")
     model.train()
@@ -836,9 +833,6 @@ def evaluate_adv(model, iterator, criterion, device, accuracy_calculation_functi
     return np.mean(epoch_total_loss ), np.mean(epoch_loss_main), np.mean(epoch_acc_main), np.mean(epoch_loss_aux), np.mean(epoch_acc_aux), grms, group_fairness
 
 
-
-
-
 def generate_predictions(model, iterator, device):
     all_preds = []
     with torch.no_grad():
@@ -1004,9 +998,9 @@ def basic_training_loop(
             train_total_loss, train_loss_main, train_acc_main, train_loss_aux, train_acc_aux = train_adv(model, train_iterator, optimizer, criterion, device,
                                           accuracy_calculation_function, other_params)
 
-            valid_total_loss, valid_loss_main, valid_acc_main, valid_loss_aux, valid_acc_aux, grms = evaluate_adv(model, dev_iterator, criterion, device, accuracy_calculation_function,
+            valid_total_loss, valid_loss_main, valid_acc_main, valid_loss_aux, valid_acc_aux, grms, group_fairness = evaluate_adv(model, dev_iterator, criterion, device, accuracy_calculation_function,
                                              other_params)
-            test_total_loss, test_loss_main, test_acc_main, test_loss_aux, test_acc_aux, grms = evaluate_adv(model, test_iterator, criterion, device, accuracy_calculation_function,
+            test_total_loss, test_loss_main, test_acc_main, test_loss_aux, test_acc_aux, grms, group_fairness = evaluate_adv(model, test_iterator, criterion, device, accuracy_calculation_function,
                                            other_params)
 
             end_time = time.monotonic()
@@ -1114,10 +1108,55 @@ def basic_training_loop(
                 train_loss, train_acc = train(model, train_iterator, optimizer, criterion, device, accuracy_calculation_function, other_params)
                 if model.noise_layer:
                     model.eps = original_eps
-                valid_loss, valid_acc, grms = evaluate(model, dev_iterator, criterion, device, accuracy_calculation_function,
+
+                logging.info("start of block - not three phase")
+                valid_loss, valid_acc, grms, group_fairness = evaluate(model, dev_iterator, criterion, device, accuracy_calculation_function,
                                                  other_params)
-                test_loss, test_acc, grms = evaluate(model, test_iterator, criterion, device, accuracy_calculation_function,
+
+                val_log = {
+                    'valid_total_loss': valid_loss,
+                    'valid_loss_main': valid_loss,
+                    'valid_acc_main': valid_acc,
+                    'valid_loss_aux': 0.0,
+                    'valid_acc_aux': 0.0,
+                    'score': grms,
+                    'group_fairness': group_fairness
+                }
+
+                logger.info(f"valid dict: {val_log}")
+
+
+
+
+                test_loss, test_acc, grms, group_fairness = evaluate(model, test_iterator, criterion, device, accuracy_calculation_function,
                                                other_params)
+
+                test_log = {
+                    'test_total_loss': test_loss,
+                    'test_loss_main': test_loss,
+                    'test_acc_main': test_acc,
+                    'test_loss_aux': 0.0,
+                    'test_acc_aux': 0.0,
+                    'score': grms,
+                    'group_fairness': group_fairness
+                }
+
+                logger.info(f"test dict: {test_log}")
+
+                hidden_leakage, logits_leakage = calculate_lekage(model, dev_iterator, test_iterator, device)
+
+                attacker_data = {
+                    'hidden_leakage': hidden_leakage,
+                    'logits_leakage': logits_leakage
+                }
+
+                logger.info(f"attacker data: {attacker_data}")
+
+
+                logging.info("start of block - not three phase")
+
+
+                # Add stuff here
 
 
             if use_lr_schedule:

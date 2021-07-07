@@ -687,6 +687,21 @@ def calculate_multiple_things(preds, y, s, other_params):
     return grms_score, scores
 
 
+def calculate_multiple_things_blog(preds, y, s, other_params):
+    """
+    do something here. Find ones which are useful and bunch them together to form easy dict
+    """
+    grms_score, grms_group_fairness = calculate_grms(preds, y, s, other_params)
+    acc_diff_scores, acc_diff_all_acc = calculate_acc_diff(preds, y, s, other_params)
+
+    scores = {
+        'grms': grms_score,
+        'acc_diff': acc_diff_scores
+    }
+
+    return grms_score, scores
+
+
 if __name__ == '__main__':
 
 
