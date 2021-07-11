@@ -1153,7 +1153,7 @@ def basic_training_loop(
                 logger.info(f"attacker data: {attacker_data}")
 
 
-                logging.info("start of block - not three phase")
+                logging.info("end of block - not three phase")
 
 
                 # Add stuff here
