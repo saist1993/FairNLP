@@ -98,7 +98,7 @@ def generate_data_iterator(dataset_name:str, **kwargs):
         dataset_creator = create_data.EncodedEmoji(dataset_name=dataset_name, **kwargs)
         vocab, number_of_labels, train_iterator, dev_iterator, test_iterator, number_of_aux_labels = dataset_creator.run()
 
-    elif dataset_name.lower() in "_".join(['blog']):
+    elif dataset_name.lower() in "_".join(['blog', 'blog_v2']):
         dataset_creator = create_data.EncodedDpNLP(dataset_name=dataset_name, **kwargs)
         vocab, number_of_labels, train_iterator, dev_iterator, test_iterator, number_of_aux_labels = dataset_creator.run()
 

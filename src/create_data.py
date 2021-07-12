@@ -812,8 +812,13 @@ class EncodedDpNLP:
     def __init__(self, dataset_name, **params):
         self.batch_size = params['batch_size']
         self.dataset_name = dataset_name
-        self.index_for_s = 0
-        if self.dataset_name == 'blog': # blog dataset
+        if self.dataset_name == 'blog':
+            self.index_for_s = 0
+        elif self.dataset_name == 'blog_v2':
+            self.index_for_s = 1
+        else:
+            raise NotImplementedError
+        if 'blog' in self.dataset_name: # blog dataset
             self.file_name = [] # @TODO: find a location and save it.
             self.file_name.append('../data/dpnlp/encoded_data/blog.pkl')
             self.file_name.append('/home/gmaheshwari/storage/dpnlp/encoded_data/blog.pkl')
