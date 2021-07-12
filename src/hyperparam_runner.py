@@ -41,7 +41,7 @@ if __name__ == '__main__':
     assert args.dataset_name != None
     assert args.epochs != None
 
-    if args.dataset_name in ['encoded_emoji', 'blog', 'bias_in_bios'] :
+    if args.dataset_name in ['encoded_emoji', 'blog', 'bias_in_bios', 'blog_v2'] :
         config_dict = 'simple'
     else:
         config_dict = 'simpler'
@@ -151,7 +151,7 @@ if __name__ == '__main__':
                          reset_adv=True,
                          encoder_learning_rate_second_phase=0.01,
                          classifier_learning_rate_second_phase=0.01,
-                         trim_data=False,
+                         trim_data=True,
                          eps_scale='constant',
                          optimizer=optimizer,
                          lr=lr,
@@ -161,7 +161,7 @@ if __name__ == '__main__':
                          use_lr_schedule=True,
                          fairness_function='demographic_parity',
                          fairness_score_function=fairness_score_function,
-                         sample_specific_class=False
+                         sample_specific_class=True
                          )
                     logger.info(f"end of run - {unique_id}")
                 except:
