@@ -100,7 +100,7 @@ if __name__ == '__main__':
     else:
         epss = [0.0]
 
-    if dataset_name == 'blog':
+    if dataset_name in ['blog', 'blog_v2']:
         fairness_score_function = 'calculate_multiple_things_blog'
     else:
         fairness_score_function = 'multiple_things'
