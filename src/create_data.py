@@ -956,14 +956,15 @@ class DomainAdaptationAmazon:
             source_file = location + source_name + '_train.svmlight'
             target_file = location + target_name + '_train.svmlight'
             test_file = location + target_name + '_test.svmlight'
+            xs, ys, xt, yt, xt_test, yt_test = load_svmlight_files([source_file, target_file, test_file])
         except FileNotFoundError:
             location = self.file_location[1]
+            print(f"in except {location}")
             source_file = location + source_name + '_train.svmlight'
             target_file = location + target_name + '_train.svmlight'
             test_file = location + target_name + '_test.svmlight'
+            xs, ys, xt, yt, xt_test, yt_test = load_svmlight_files([source_file, target_file, test_file])
 
-
-        xs, ys, xt, yt, xt_test, yt_test = load_svmlight_files([source_file, target_file, test_file])
         ys, yt, yt_test = (np.array((y + 1) / 2, dtype=int) for y in (ys, yt, yt_test))
 
         return xs.A, ys, xt.A, yt, xt_test.A, yt_test # .A converts sparse matrix to dense matrix.
