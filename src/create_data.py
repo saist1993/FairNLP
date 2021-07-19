@@ -957,7 +957,7 @@ class DomainAdaptationAmazon:
             target_file = location + target_name + '_train.svmlight'
             test_file = location + target_name + '_test.svmlight'
         except FileNotFoundError:
-            location = self.file_location[0]
+            location = self.file_location[1]
             source_file = location + source_name + '_train.svmlight'
             target_file = location + target_name + '_train.svmlight'
             test_file = location + target_name + '_test.svmlight'
