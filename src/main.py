@@ -35,8 +35,10 @@ from utils import clean_text_tweet as clean_text_function_tweet
 from utils import equal_odds, demographic_parity, equal_opportunity
 from training_loop import basic_training_loop, three_phase_training_loop
 from utils import calculate_grms, calculate_demographic_parity, calculate_equal_opportunity, \
-    calculate_equal_odds, calculate_true_rates, calculate_ddp_dde, calculate_acc_diff, calculate_multiple_things, calculate_multiple_things_blog
-from models import BiLSTM, initialize_parameters, BiLSTMAdv, BOWClassifier, Attacker, CNN, BiLSTMAdvWithFreeze, LinearLayers, LinearAdv
+    calculate_equal_odds, calculate_true_rates, calculate_ddp_dde, \
+    calculate_acc_diff, calculate_multiple_things, calculate_multiple_things_blog, calculate_dummy_fairness
+from models import BiLSTM, initialize_parameters, BiLSTMAdv, BOWClassifier, Attacker, \
+    CNN, BiLSTMAdvWithFreeze, LinearLayers, LinearAdv
 
 import bias_in_bios_analysis
 
@@ -102,6 +104,9 @@ def generate_data_iterator(dataset_name:str, **kwargs):
         dataset_creator = create_data.EncodedDpNLP(dataset_name=dataset_name, **kwargs)
         vocab, number_of_labels, train_iterator, dev_iterator, test_iterator, number_of_aux_labels = dataset_creator.run()
 
+    elif "amazon" in dataset_name.lower():
+        dataset_creator = create_data.DomainAdaptationAmazon(dataset_name=dataset_name, **kwargs)
+        vocab, number_of_labels, train_iterator, dev_iterator, test_iterator, number_of_aux_labels = dataset_creator.run()
     else:
         raise CustomError("No such dataset")
 
@@ -346,6 +351,11 @@ def main(emb_dim:int,
         wandb = False
 
     logger.info(f"arguemnts: {locals()}")
+
+    if "amazon" in dataset_name:
+        task = 'domain_adaptation'
+    else:
+        task = 'privacy/fairness'
 
 
     if config_dict == 'simple':
@@ -616,6 +626,8 @@ def main(emb_dim:int,
         fairness_score_function = calculate_multiple_things
     elif fairness_score_function.lower() == 'calculate_multiple_things_blog':
         fairness_score_function = calculate_multiple_things_blog
+    elif fairness_score_function.lower() == 'dummy_fairness':
+        fairness_score_function = calculate_dummy_fairness
     else:
         print("following type are supported: grms, equal_odds, demographic_parity, equal_opportunity")
         raise NotImplementedError
@@ -648,7 +660,8 @@ def main(emb_dim:int,
             'use_lr_schedule': use_lr_schedule,
             'lr_scheduler': lr_scheduler,
             'fairness_function': fairness_function,
-            'fairness_score_function':fairness_score_function
+            'fairness_score_function':fairness_score_function,
+            'task': task
         }
 
 

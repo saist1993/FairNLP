@@ -259,6 +259,25 @@ class TextClassificationDataset(torch.utils.data.Dataset):
         return self.vocab
 
 
+class CombinedIterator:
+    # iterator assumes that itera and iterb has same length.
+    def __init__(self, itera, iterb):
+        self.itera = itera
+        self.iterb = iterb
+        assert len(self.itera) == len(self.iterb)
+
+    def __iter__(self):
+
+        for item1, item2 in zip(self.itera, self.iterb):
+            new_item = []
+            for i in range(len(item1)):
+                new_item.append(torch.cat((item1[i], item2[i]), 0))
+
+            yield new_item
+
+    def __len__(self):
+        return len(self.itera)  # len of itera is same as iterb
+
 def get_enc_grad_norm(model):
 
 
@@ -701,6 +720,10 @@ def calculate_multiple_things_blog(preds, y, s, other_params):
 
     return grms_score, scores
 
+
+def calculate_dummy_fairness(preds, y, s, other_params):
+    """does not calculate fairness. Just returns a dummy value. Useful in case where fairness need not be calculated."""
+    return [0.0], {}
 
 if __name__ == '__main__':
 

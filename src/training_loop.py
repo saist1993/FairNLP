@@ -577,6 +577,11 @@ def train_adv_three_phase_custom(model, iterator, optimizer, criterion, device, 
     except KeyError:
         print("!!!!!!********** warning encoder and classifier second phase learning rate not set ****!!!!!")
 
+    try:
+        task = other_params['task']
+    except KeyError:
+        task = 'privacy'
+
     for items in tqdm(iterator):
         if len(items) == 4:
             labels, text, lengths, aux = items
@@ -655,6 +660,10 @@ def train_adv_three_phase_custom(model, iterator, optimizer, criterion, device, 
             else:
                 predictions, aux_predictions1 = preds
 
+            if task == 'domain_adaptation':
+                predictions = predictions[aux == 0] # 0 is src domain.
+                labels = labels[aux == 0]
+
             if is_regression:
                 loss_main = criterion(predictions.squeeze(), labels.squeeze())
             else:
@@ -721,6 +730,10 @@ def train_adv_three_phase_custom(model, iterator, optimizer, criterion, device, 
                 predictions, aux_predictions, hidden = model(text, lengths, gradient_reversal=True)
             else:
                 predictions, aux_predictions = model(text, lengths, gradient_reversal=True)
+
+            if task == 'domain_adaptation':
+                predictions = predictions[aux == 0] # 0 is assumed to be source domain
+                labels = labels[aux == 0]
 
             if is_regression:
                 loss_main = criterion(predictions.squeeze(), labels.squeeze())
@@ -959,6 +972,8 @@ def basic_training_loop(
     except:
         reset_fairness = False
 
+    task = other_params['task']
+
 
     print(f"is adv: {is_adv}")
 
@@ -1143,7 +1158,10 @@ def basic_training_loop(
 
                 logger.info(f"test dict: {test_log}")
 
-                hidden_leakage, logits_leakage = calculate_lekage(model, dev_iterator, test_iterator, device)
+                if task != 'domain_adaptation':
+                    hidden_leakage, logits_leakage = calculate_lekage(model, dev_iterator, test_iterator, device)
+                else:
+                    hidden_leakage, logits_leakage = -1.0, -1.0
 
                 attacker_data = {
                     'hidden_leakage': hidden_leakage,
@@ -1276,6 +1294,8 @@ def three_phase_training_loop(
     except KeyError:
         do_leakage_calculation = False
     assert is_adv == True
+
+    task = other_params['task']
 
     current_scale = 0
     epochs_to_increase_lr = 8
@@ -1415,7 +1435,10 @@ def three_phase_training_loop(
 
             logger.info(f"test dict: {test_log}")
 
-            hidden_leakage, logits_leakage = calculate_lekage(model, dev_iterator, test_iterator, device)
+            if task != 'domain_adaptation':
+                hidden_leakage, logits_leakage = calculate_lekage(model, dev_iterator, test_iterator, device)
+            else:
+                hidden_leakage, logits_leakage = -1.0, -1.0
             # hidden_leakage, logits_leakage = 100.0, 100.0
 
             attacker_data = {
